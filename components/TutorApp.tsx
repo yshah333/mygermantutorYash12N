@@ -109,7 +109,7 @@ export default function TutorApp() {
   const status = !connected ? "Connecting…"
     : notice ? notice
     : thinkLeft > 0 && turn !== "youSpeaking" ? `Take your time · ${Math.ceil(thinkLeft / 1000)} s`
-    : turn === "botSpeaking" ? "She's speaking"
+    : turn === "botSpeaking" ? "Maria is speaking"
     : turn === "youSpeaking" ? "Listening…"
     : turn === "yourTurn" ? "Your turn"
     : "…";
@@ -123,7 +123,7 @@ export default function TutorApp() {
       <main className="session">
         <header className="bar">
           <span className="chip">{level}</span>
-          <span className="role">{plan ? `She's ${plan.role}` : "Setting up your session…"}</span>
+          <span className="role">{plan ? `Maria · ${plan.role.replace(/^an? /, "")}` : "Setting up your session…"}</span>
           <span className="clock">{fmt(timeLeft)}</span>
           <button className="end" onClick={() => sessionRef.current?.end()}>End</button>
         </header>
@@ -139,7 +139,7 @@ export default function TutorApp() {
               {lastTutor.correction && <span className="tag">Correction</span>}
               {lastTutor.text}
             </p>
-          ) : <p className="tutor muted">{starting ? "Allow the microphone, then she'll greet you." : "…"}</p>}
+          ) : <p className="tutor muted">{starting ? "Allow the microphone, then Maria will greet you." : "…"}</p>}
           {lastYou && <p className="you">You: {lastYou.text}</p>}
         </section>
 
@@ -152,7 +152,7 @@ export default function TutorApp() {
             Fertig ✓
           </button>
         </div>
-        <p className="hint">“Moment” gives you more time. “Fertig” tells her you’re done. Headphones work best.</p>
+        <p className="hint">“Moment” gives you more time. “Fertig” tells Maria you’re done. Headphones work best.</p>
       </main>
     );
   }
@@ -161,13 +161,13 @@ export default function TutorApp() {
     return (
       <main className="home">
         <h1>Gut gemacht!</h1>
-        <p className="sub">You practised for {Math.max(1, Math.round(practisedMs / 60000))} min{plan ? ` with ${plan.role}` : ""}.</p>
+        <p className="sub">You practised for {Math.max(1, Math.round(practisedMs / 60000))} min{" with Maria"}.</p>
         {error && <p className="error">{error}</p>}
         <section className="transcript">
           {shown.length === 0 && <p className="muted">No conversation recorded.</p>}
           {shown.map((l, i) => (
             <p key={i} className={`${l.who} ${l.correction ? "correction" : ""}`}>
-              <b>{l.who === "tutor" ? "Tutor" : "You"}</b>
+              <b>{l.who === "tutor" ? "Maria" : "You"}</b>
               {l.correction && <span className="tag">Correction</span>}
               {l.text}
             </p>
@@ -186,8 +186,8 @@ export default function TutorApp() {
       <div className="hero">
         <img src="/tutor/hero.webp" alt="" className="hero-img" />
         <div>
-          <h1>Deutsch sprechen</h1>
-          <p className="sub">15 minutes of real conversation, Goethe-style. Pick your level.</p>
+          <h1>Sprich mit Maria</h1>
+          <p className="sub">15 minutes of real German conversation, Goethe-style. Pick your level.</p>
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export default function TutorApp() {
       <button className="primary big" onClick={start} disabled={starting || ((needPass || !savedPass) && !passcode)}>
         {starting ? "Starting…" : `Start ${level} conversation`}
       </button>
-      <p className="hint">She speaks first and waits for you. Tap “Fertig” when you finish your answer.</p>
+      <p className="hint">Maria speaks first and waits for you. Tap “Fertig” when you finish your answer.</p>
     </main>
   );
 }
