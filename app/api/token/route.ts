@@ -20,7 +20,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "The server has no GEMINI_API_KEY yet. Add it in Vercel → Settings → Environment Variables." }, { status: 500 });
   }
   const passcode = process.env.APP_PASSCODE;
-  if (passcode && req.headers.get("x-passcode") !== passcode) {
+  if (!passcode) {
+    // never run open: without a passcode anyone could use your Gemini credit
+    return NextResponse.json({ error: "The server has no APP_PASSCODE yet. Add it in Vercel → Settings → Environment Variables." }, { status: 500 });
+  }
+  if (req.headers.get("x-passcode") !== passcode) {
     return NextResponse.json({ error: "Wrong passcode." }, { status: 401 });
   }
 

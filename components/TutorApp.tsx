@@ -110,7 +110,7 @@ export default function TutorApp() {
       setLogLines(s.log.slice());
       sessionRef.current = null;
       setScreen("home");
-      if (/passcode/i.test(msg)) { store(PASS_KEY, ""); setSavedPass(false); setNeedPass(true); }
+      if (/wrong passcode/i.test(msg)) { store(PASS_KEY, ""); setSavedPass(false); setNeedPass(true); }
       setError(/Permission|NotAllowed/i.test(msg) ? "Microphone access was blocked. Allow the microphone for this site and try again." : msg);
     } finally {
       setStarting(false);
@@ -224,30 +224,28 @@ export default function TutorApp() {
         ))}
       </div>
 
-      {(needPass || !savedPass) && (
-        <label className="pass">
-          Passcode
-          <input
-            type="text"
-            className="masked"
-            name="tutor-passcode"
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && passcode && !starting) start(); }}
-            placeholder="Your app passcode"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            data-1p-ignore
-            data-lpignore="true"
-          />
-        </label>
-      )}
+      <label className="pass">
+        {savedPass && !needPass ? "Passcode · saved on this phone" : "Passcode"}
+        <input
+          type="text"
+          className="masked"
+          name="tutor-passcode"
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && passcode && !starting) start(); }}
+          placeholder="Your app passcode"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
+        />
+      </label>
 
       {error && <p className="error">{error}</p>}
 
-      <button className="primary big" onClick={start} disabled={starting || ((needPass || !savedPass) && !passcode)}>
+      <button className="primary big" onClick={start} disabled={starting || !passcode}>
         {starting ? "Starting…" : `Start ${level} conversation`}
       </button>
       <p className="hint">Maria speaks first and waits for you. Tap “Fertig” when you finish your answer.</p>

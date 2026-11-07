@@ -14,12 +14,12 @@ export const LEVELS: Record<Level, { title: string; blurb: string; timing: Level
     title: "A1",
     blurb: "Beginner · short, slow sentences",
     // you think while you speak: a long pause still counts as "still talking" (tap Fertig to hand over sooner)
-    timing: { pauseToleranceMs: 10000, helpAfterMs: 12000, thinkingBonusMs: 10000 },
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 12000, thinkingBonusMs: 10000 },
   },
   A2: {
     title: "A2",
     blurb: "Elementary · everyday topics",
-    timing: { pauseToleranceMs: 5000, helpAfterMs: 6000, thinkingBonusMs: 10000 },
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 6000, thinkingBonusMs: 10000 },
   },
   B1: {
     title: "B1",
