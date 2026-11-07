@@ -53,6 +53,14 @@ export class TutorSession {
   private reconnectTries = 0;
   private raf = 0;
   private connId = 0;
+  private greeted = false;          // she has started speaking at least once
+  private kickoffRetries = 0;
+  private turnAudio = 0;            // audio chunks in her current reply
+  private nudgedEmpty = false;
+  private t0 = 0;
+  private lastStats = 0;
+  /** recent events, shown in the diagnostic panel (tap the status pill) */
+  log: string[] = [];
   private reconnectDueBy = 0;   // set by goAway: reconnect at the next quiet moment
   private wakeLock: { release(): Promise<void> } | null = null;
 
@@ -60,24 +68,28 @@ export class TutorSession {
 
   /** Call from a tap: browsers only allow audio to start after a user gesture. */
   async start() {
+    this.t0 = performance.now();
     this.ctx = new AudioContext({ latencyHint: "interactive" });
     await this.ctx.resume();
     this.player = new PcmPlayer(this.ctx);
     this.turns = new TurnController(LEVELS[this.levelName].timing, {
       startActivity: (pre) => {
+        this.dbg(`you started speaking (mic ${this.turns.lastRms.toFixed(3)}, noise ${this.turns.floor.toFixed(3)})`);
         this.send({ activityStart: {} });
         if (pre.length) this.sendAudio(pre);
         this.youLine = this.addLine({ who: "you", text: "" });
       },
       audio: (frames) => this.sendAudio(frames),
-      endActivity: () => this.send({ activityEnd: {} }),
-      askForHelp: () => this.sendText(HELP_NUDGE),
+      endActivity: () => { this.dbg("your turn ended"); this.nudgedEmpty = false; this.send({ activityEnd: {} }); },
+      askForHelp: () => { this.dbg("silence: asking Maria to help"); this.sendText(HELP_NUDGE); },
       interruptPlayback: () => { this.player.stopAll(); this.botTurnOpen = false; this.turnDone = false; },
       stateChanged: (s) => this.cb.onTurn(s),
     });
     this.turns.setPaused(true);
+    this.dbg("audio ready, asking for microphone");
     this.mic = new MicCapture(this.ctx, (pcm, rms) => this.turns.frame(pcm, rms, performance.now()));
     await this.mic.start();
+    this.dbg(`microphone on (${this.ctx.sampleRate} Hz)`);
     await this.connect(false);
     this.endsAt = performance.now() + SESSION_MINUTES * 60_000;
     try {
@@ -85,6 +97,12 @@ export class TutorSession {
       this.wakeLock = wl ? await wl.request("screen") : null;
     } catch { /* screen may still dim; not critical */ }
     this.loop();
+  }
+
+  dbg(msg: string) {
+    const t = ((performance.now() - this.t0) / 1000).toFixed(1).padStart(6);
+    this.log.push(`${t}s  ${msg}`);
+    if (this.log.length > 80) this.log.shift();
   }
 
   /** the thinking button */
@@ -119,7 +137,8 @@ export class TutorSession {
       body: JSON.stringify({ level: this.levelName, resume }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Could not start a session (${res.status}).`);
+    if (!res.ok) { this.dbg(`token request failed: ${res.status} ${data.error ?? ""}`); throw new Error(data.error || `Could not start a session (${res.status}).`); }
+    this.dbg(`token ok${resume ? " (resume)" : ""}: model ${data.model}, voice ${data.voice}`);
     if (!resume) {
       this.plan = data.plan;
       this.model = data.model;
@@ -143,8 +162,8 @@ export class TutorSession {
       },
       callbacks: {
         onmessage: (m) => { if (id === this.connId) this.onMessage(m); },
-        onerror: () => { /* onclose follows */ },
-        onclose: (e) => { if (id === this.connId) this.onClose(e); },
+        onerror: (e) => { if (id === this.connId) this.dbg(`connection error: ${(e as ErrorEvent).message ?? "unknown"}`); },
+        onclose: (e) => { if (id === this.connId) { this.dbg(`connection closed: code ${e.code} ${e.reason ?? ""}`); this.onClose(e); } },
       },
     });
     this.afterSetup();
@@ -154,9 +173,14 @@ export class TutorSession {
     if (!this.session || !this.setupDone) return;
     this.reconnectTries = 0;
     this.cb.onNotice(null);
+    this.dbg("connected (setup complete)");
     if (!this.kickedOff) {
       this.kickedOff = true;
       this.sendText(KICKOFF);
+      this.dbg("asked Maria to greet you");
+      // keep the mic out of it until her greeting starts, so noise can't cancel it
+      setTimeout(() => { if (!this.ended && !this.reconnecting && this.turns) { if (!this.greeted) this.dbg("no greeting after 8 s, opening the mic anyway"); this.turns.setPaused(false); } }, 8000);
+      return;
     }
     this.turns.setPaused(false);
   }
@@ -197,11 +221,11 @@ export class TutorSession {
     if (m.setupComplete) { this.setupDone = true; this.afterSetup(); }
     const upd = m.sessionResumptionUpdate;
     if (upd?.resumable && upd.newHandle) this.handle = upd.newHandle;
-    if (m.goAway && !this.reconnectDueBy) this.reconnectDueBy = performance.now() + 5000;
+    if (m.goAway && !this.reconnectDueBy) { this.dbg("server: connection ends soon, will reconnect"); this.reconnectDueBy = performance.now() + 5000; }
 
     const sc = m.serverContent;
     if (!sc) return;
-    if (sc.interrupted) { this.player.stopAll(); this.botTurnOpen = false; this.tutorLine = null; }
+    if (sc.interrupted) { this.dbg("Maria was interrupted"); this.player.stopAll(); this.botTurnOpen = false; this.tutorLine = null; }
     for (const part of sc.modelTurn?.parts ?? []) {
       const d = part.inlineData;
       if (d?.data && (d.mimeType ?? "").startsWith("audio/")) {
@@ -209,13 +233,34 @@ export class TutorSession {
           this.botTurnOpen = true;
           this.turnDone = false;
           this.turns.botAudioStarted();
+          this.dbg("Maria started speaking");
+          if (!this.greeted) { this.greeted = true; this.turns.setPaused(false); }
         }
+        this.turnAudio++;
         this.player.enqueueBase64(d.data);
       }
     }
     if (sc.outputTranscription?.text) this.tutorSaid(sc.outputTranscription.text);
     if (sc.inputTranscription?.text) this.youSaid(sc.inputTranscription.text);
-    if (sc.turnComplete) { this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; }
+    if (sc.turnComplete) {
+      const chunks = this.turnAudio;
+      this.dbg(`Maria's turn complete (${chunks} audio chunks)`);
+      this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; this.turnAudio = 0;
+      if (chunks === 0) this.emptyReply();
+    }
+  }
+
+  /** she answered without any audio: retry once or twice instead of leaving you in silence */
+  private emptyReply() {
+    if (!this.greeted && this.kickoffRetries < 2) {
+      this.kickoffRetries++;
+      this.dbg(`empty reply to the greeting, retry ${this.kickoffRetries}`);
+      setTimeout(() => this.sendText(KICKOFF), 400);
+    } else if (this.greeted && !this.nudgedEmpty) {
+      this.nudgedEmpty = true;
+      this.dbg("empty reply, asking her to answer out loud");
+      setTimeout(() => this.sendText("[Please answer the learner out loud now, briefly and simply.]"), 400);
+    }
   }
 
   // ---------- sending ----------
@@ -273,6 +318,7 @@ export class TutorSession {
     }
 
     const st = this.turns.state;
+    if (now - this.lastStats > 3000) { this.lastStats = now; this.dbg(`mic ${this.turns.lastRms.toFixed(3)} · noise ${this.turns.floor.toFixed(3)} · ${st}${playing ? " · playing" : ""}`); }
     if (this.reconnectDueBy && ((!playing && st !== "youSpeaking") || now > this.reconnectDueBy)) this.reconnect();
     this.bus.level = this.player.level();
     this.bus.mode = playing ? "speaking"

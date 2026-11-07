@@ -40,6 +40,9 @@ export default function TutorApp() {
   const [timeLeft, setTimeLeft] = useState(SESSION_MINUTES * 60_000);
   const [thinkLeft, setThinkLeft] = useState(0);
   const [practisedMs, setPractisedMs] = useState(0);
+  const [showLog, setShowLog] = useState(false);
+  const [logLines, setLogLines] = useState<string[]>([]);
+  const [copied, setCopied] = useState(false);
   const sessionRef = useRef<TutorSession | null>(null);
   const startedAt = useRef(0);
   const bus = useMemo<AvatarBus>(() => ({ mode: "idle", level: 0, praiseUntil: 0, ahaUntil: 0 }), []);
@@ -59,9 +62,14 @@ export default function TutorApp() {
       const now = performance.now();
       setTimeLeft(s.endsAt - now);
       setThinkLeft(s.turns ? s.turns.thinkingLeft(now) : 0);
+      if (showLog) setLogLines(s.log.slice());
     }, 200);
     return () => clearInterval(id);
-  }, [screen]);
+  }, [screen, showLog]);
+
+  function copyLog() {
+    navigator.clipboard?.writeText(logLines.join("\n")).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }, () => undefined);
+  }
 
   async function start() {
     setError(null);
@@ -79,6 +87,7 @@ export default function TutorApp() {
       onNotice: (n) => setNotice(n),
       onError: (m) => setError(m),
       onEnded: () => {
+        setLogLines(s.log.slice());
         setPractisedMs(performance.now() - startedAt.current);
         sessionRef.current = null;
         setScreen("summary");
@@ -96,7 +105,9 @@ export default function TutorApp() {
       setNeedPass(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      s.dbg(`start failed: ${msg}`);
       await s.end().catch(() => undefined);
+      setLogLines(s.log.slice());
       sessionRef.current = null;
       setScreen("home");
       if (/passcode/i.test(msg)) { store(PASS_KEY, ""); setSavedPass(false); setNeedPass(true); }
@@ -130,8 +141,14 @@ export default function TutorApp() {
 
         <div className="stage-wrap">
           <Avatar bus={bus} />
-          <div className={`status ${turn === "youSpeaking" ? "live" : ""}`}>{status}</div>
+          <button className={`status ${turn === "youSpeaking" ? "live" : ""}`} onClick={() => setShowLog((v) => !v)} title="Tap for diagnostics">{status}</button>
         </div>
+        {showLog && (
+          <section className="log">
+            <div className="log-head"><b>Diagnostics</b><button onClick={copyLog}>{copied ? "Copied" : "Copy"}</button></div>
+            <pre>{logLines.slice(-30).join("\n") || "…"}</pre>
+          </section>
+        )}
 
         <section className="captions" aria-live="polite">
           {lastTutor ? (
@@ -173,6 +190,13 @@ export default function TutorApp() {
             </p>
           ))}
         </section>
+        {logLines.length > 0 && (
+          <details className="log">
+            <summary>Diagnostics</summary>
+            <div className="log-head"><span /><button onClick={copyLog}>{copied ? "Copied" : "Copy"}</button></div>
+            <pre>{logLines.join("\n")}</pre>
+          </details>
+        )}
         <div className="row">
           <button className="primary" onClick={start}>Practise again ({level})</button>
           <button onClick={() => { setError(null); setScreen("home"); }}>Change level</button>

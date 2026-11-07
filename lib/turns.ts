@@ -30,7 +30,9 @@ export class TurnController {
   state: TurnState = "awaitingBot";
   thinkingUntil = 0;
 
-  private floor = 0.004;
+  floor = 0.004;                // background noise level (adapts)
+  lastRms = 0;
+  private speechLevel = 0.05;   // how loud your speech is (adapts while you talk)
   private loudRun = 0;
   private preroll: Int16Array[] = [];
   private batch: Int16Array[] = [];
@@ -77,19 +79,27 @@ export class TurnController {
 
   /** one 20 ms microphone frame */
   frame(pcm: Int16Array, rms: number, now: number) {
+    this.lastRms = rms;
+    // background-noise estimate: drops fast, rises slowly, so steady noise (air-con, fan) is learned
+    // within a few seconds. It keeps calibrating even while the mic is held during her greeting.
+    if (this.state !== "youSpeaking") {
+      this.floor = rms < this.floor ? this.floor * 0.9 + rms * 0.1 : this.floor * 0.995 + rms * 0.005;
+      this.floor = Math.min(0.08, Math.max(0.0015, this.floor));
+    }
     if (this.paused) return;
-    const speakingThreshold = Math.max(0.012, this.floor * 3);
-    const bargeThreshold = Math.max(0.04, this.floor * 6);   // stricter while she talks (echo guard)
-    const keepThreshold = Math.max(0.008, this.floor * 2);
+    const speakingThreshold = Math.max(0.012, this.floor * 2.5);
+    const bargeThreshold = Math.max(0.04, this.floor * 5);   // stricter while she talks (echo guard)
+    const keepThreshold = Math.max(0.008, this.floor * 1.8);
 
     if (this.state !== "youSpeaking") {
       this.preroll.push(pcm);
       if (this.preroll.length > PREROLL_FRAMES) this.preroll.shift();
       const herTurn = this.state === "botSpeaking";
-      const thr = herTurn ? bargeThreshold : speakingThreshold;
+      // while she talks or is about to answer, only clear, sustained speech counts (noise must not cancel her)
+      const guarded = herTurn || this.state === "awaitingBot";
+      const thr = guarded ? bargeThreshold : speakingThreshold;
       this.loudRun = rms > thr ? this.loudRun + 1 : 0;
-      if (rms < speakingThreshold) this.floor = this.floor * 0.97 + Math.max(0.0015, rms) * 0.03;
-      const needed = herTurn ? 12 : 3;   // 240 ms to interrupt her, 60 ms otherwise
+      const needed = guarded ? 12 : 4;   // 240 ms when guarded, 80 ms on your turn
       if (this.loudRun >= needed) {
         if (herTurn) this.ev.interruptPlayback();
         this.ev.startActivity(this.preroll.splice(0));
@@ -98,6 +108,7 @@ export class TurnController {
         this.silenceMs = 0;
         this.turnStart = now;
         this.loudRun = 0;
+        this.speechLevel = Math.max(rms, speakingThreshold * 1.5);
       } else if (this.state === "yourTurn" && now >= this.helpAt && this.helpsThisWait < 2) {
         this.helpsThisWait++;
         this.helpAt = now + this.timing.helpAfterMs + 3000;
@@ -110,7 +121,15 @@ export class TurnController {
     // you are speaking: stream audio, watch for the end of your turn
     this.batch.push(pcm);
     if (this.batch.length >= BATCH_FRAMES) this.ev.audio(this.batch.splice(0));
-    this.silenceMs = rms > keepThreshold ? 0 : this.silenceMs + FRAME_MS;
+    // "silence" is relative to how loud you speak, so steady background noise (air-con, fan) still counts as a pause
+    const quietBelow = Math.max(keepThreshold, this.speechLevel * 0.3);
+    if (rms > quietBelow) {
+      this.silenceMs = 0;
+      this.speechLevel = this.speechLevel * 0.95 + rms * 0.05;
+    } else {
+      this.silenceMs += FRAME_MS;
+      this.floor = this.floor * 0.99 + Math.max(0.0015, rms) * 0.01;
+    }
     const thinkingHeld = now < this.thinkingUntil;
     if ((this.silenceMs >= this.timing.pauseToleranceMs && !thinkingHeld) || now - this.turnStart > MAX_TURN_MS) {
       if (this.batch.length) this.ev.audio(this.batch.splice(0));
