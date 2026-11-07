@@ -28,6 +28,8 @@ h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.01em; }
 .level-title { font-weight: 700; font-size: 20px; width: 40px; }
 .level-blurb { color: var(--muted); font-size: 15px; }
 .pass { display: grid; gap: 6px; font-size: 14px; color: var(--muted); margin-bottom: 14px; }
+/* masked text field instead of type=password, so password managers don't autofill old values */
+.pass input.masked { -webkit-text-security: disc; text-security: disc; }
 .pass input { font: inherit; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
 .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .transcript { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 6px 14px; max-height: 52vh; overflow: auto; }

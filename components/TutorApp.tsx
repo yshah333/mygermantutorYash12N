@@ -29,6 +29,7 @@ export default function TutorApp() {
   const [level, setLevel] = useState<Level>("A1");
   const [passcode, setPasscode] = useState("");
   const [needPass, setNeedPass] = useState(false);
+  const [savedPass, setSavedPass] = useState(false);   // a passcode that worked before is stored on this device
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [plan, setPlan] = useState<SessionPlan | null>(null);
@@ -45,7 +46,7 @@ export default function TutorApp() {
 
   useEffect(() => {
     const p = store(PASS_KEY) as string, l = store(LEVEL_KEY) as string;
-    if (p) setPasscode(p);
+    if (p) { setPasscode(p); setSavedPass(true); }
     if (l === "A1" || l === "A2" || l === "B1") setLevel(l);
   }, []);
 
@@ -90,14 +91,15 @@ export default function TutorApp() {
     startedAt.current = performance.now();
     try {
       await s.start();
-      if (passcode) store(PASS_KEY, passcode);
+      store(PASS_KEY, passcode);
+      setSavedPass(true);
       setNeedPass(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await s.end().catch(() => undefined);
       sessionRef.current = null;
       setScreen("home");
-      if (/passcode/i.test(msg)) setNeedPass(true);
+      if (/passcode/i.test(msg)) { store(PASS_KEY, ""); setSavedPass(false); setNeedPass(true); }
       setError(/Permission|NotAllowed/i.test(msg) ? "Microphone access was blocked. Allow the microphone for this site and try again." : msg);
     } finally {
       setStarting(false);
@@ -182,7 +184,7 @@ export default function TutorApp() {
   return (
     <main className="home">
       <div className="hero">
-        <img src="/tutor/base.webp" alt="" className="hero-img" />
+        <img src="/tutor/hero.webp" alt="" className="hero-img" />
         <div>
           <h1>Deutsch sprechen</h1>
           <p className="sub">15 minutes of real conversation, Goethe-style. Pick your level.</p>
@@ -198,16 +200,30 @@ export default function TutorApp() {
         ))}
       </div>
 
-      {(needPass || !passcode) && (
+      {(needPass || !savedPass) && (
         <label className="pass">
           Passcode
-          <input type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)} placeholder="Your app passcode" autoComplete="current-password" />
+          <input
+            type="text"
+            className="masked"
+            name="tutor-passcode"
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && passcode && !starting) start(); }}
+            placeholder="Your app passcode"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-1p-ignore
+            data-lpignore="true"
+          />
         </label>
       )}
 
       {error && <p className="error">{error}</p>}
 
-      <button className="primary big" onClick={start} disabled={starting}>
+      <button className="primary big" onClick={start} disabled={starting || ((needPass || !savedPass) && !passcode)}>
         {starting ? "Starting…" : `Start ${level} conversation`}
       </button>
       <p className="hint">She speaks first and waits for you. Tap “Fertig” when you finish your answer.</p>

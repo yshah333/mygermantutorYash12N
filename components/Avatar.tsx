@@ -42,9 +42,20 @@ function towardInv(t: number) {
 const css = (P: number[]) => `matrix(${P.map((v) => v.toFixed(5)).join(",")})`;
 const smooth = (x: number) => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 
-function load(src: string) {
+/**
+ * Decode an image at full resolution, independent of the browser's image cache.
+ * (iOS Safari may reuse a smaller copy decoded for a thumbnail elsewhere on the page,
+ * which made the canvas draw her tiny.)
+ */
+async function loadBitmap(src: string): Promise<CanvasImageSource> {
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    if (typeof createImageBitmap === "function") return await createImageBitmap(blob);
+  } catch { /* fall back below */ }
   const im = new Image();
   im.src = src;
+  await im.decode().catch(() => undefined);
   return im;
 }
 
@@ -65,8 +76,8 @@ export default function Avatar({ bus }: { bus: AvatarBus }) {
     const off = document.createElement("canvas");
     off.width = off.height = 1200;
     const octx = off.getContext("2d")!;
-    const base = load("/tutor/base.webp");
-    const img = Object.fromEntries(KEYS.map((k) => [k, load(`/tutor/${k}.webp`)])) as Record<PatchKey, HTMLImageElement>;
+    let base: CanvasImageSource | null = null;
+    const img = {} as Record<PatchKey, CanvasImageSource>;
     const A = Object.fromEntries(KEYS.map((k) => [k, 0])) as Record<PatchKey, number>;
 
     const resize = () => { fit.style.transform = `scale(${stage.clientWidth / 1200})`; };
@@ -80,9 +91,9 @@ export default function Avatar({ bus }: { bus: AvatarBus }) {
       if (key === lastKey) return;
       lastKey = key;
       octx.clearRect(0, 0, 1200, 1200);
-      if (base.complete) octx.drawImage(base, 0, 0);
+      if (base) octx.drawImage(base, 0, 0, 1200, 1200);
       for (const k of KEYS) {
-        if (A[k] <= 0.001 || !img[k].complete) continue;
+        if (A[k] <= 0.001 || !img[k]) continue;
         const p = PATCH[k];
         octx.globalAlpha = A[k];
         octx.drawImage(img[k], p.x, p.y, p.w, p.h);
@@ -94,12 +105,12 @@ export default function Avatar({ bus }: { bus: AvatarBus }) {
       ctx.translate(PX, PY + dy);
       ctx.rotate((deg * Math.PI) / 180);
       ctx.translate(-PX, -PY);
-      ctx.drawImage(off, 0, y0, 1200, h, 0, y0, 1200, h);
+      ctx.drawImage(off, 0, y0, 1200, h, 0, y0, 1200, h);   // explicit sizes everywhere (Safari-safe)
     };
     const draw = (deg: number, dy: number) => {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, 1200, 1200);
-      if (Math.abs(deg) < 0.01 && Math.abs(dy) < 0.01) { ctx.drawImage(off, 0, 0); return; }
+      if (Math.abs(deg) < 0.01 && Math.abs(dy) < 0.01) { ctx.drawImage(off, 0, 0, 1200, 1200); return; }
       band(BEND1, 1200 - BEND1, 0, 0);
       for (let y = BEND1 - SLICE; y >= BEND0; y -= SLICE) {
         const f = 1 - smooth((y - BEND0) / (BEND1 - BEND0));
@@ -177,9 +188,11 @@ export default function Avatar({ bus }: { bus: AvatarBus }) {
       if (rigOp > 0) { compose(); draw(rot, nodY - 2 * br); }
       raf = requestAnimationFrame(frame);
     };
-    // start only once every layer has decoded, so the first frame is complete
+    // start only once every layer is decoded, so the first frame is complete
     let stopped = false;
-    Promise.all([base, ...KEYS.map((k) => img[k])].map((im) => im.decode().catch(() => undefined))).then(() => {
+    Promise.all([loadBitmap("/tutor/base.webp"), ...KEYS.map((k) => loadBitmap(`/tutor/${k}.webp`))]).then(([b, ...rest]) => {
+      base = b;
+      KEYS.forEach((k, i) => { img[k] = rest[i]; });
       if (!stopped) raf = requestAnimationFrame(frame);
     });
     return () => { stopped = true; cancelAnimationFrame(raf); ro.disconnect(); };
