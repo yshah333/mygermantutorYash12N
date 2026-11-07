@@ -19,6 +19,7 @@ const FRAME_MS = 20;
 const PREROLL_FRAMES = 15;      // keep 300 ms before speech starts
 const BATCH_FRAMES = 5;         // send 100 ms per message
 const MAX_TURN_MS = 45000;
+const MAX_INTRO_MS = 120000;   // the introduction is 5-7 sentences
 const ECHO_TAIL_MS = 450;       // her voice still echoes in the room / speaker just after she stops
 const SUSTAIN_FRAMES = 3;       // 60 ms of sound needed to count as speech again (clicks, bumps don't count)
 
@@ -43,6 +44,12 @@ export class TurnController {
   private helpAt = 0;
   private helpsThisWait = 0;   // help nudges since you last spoke (max 2)
   private paused = false;
+  /** your answers so far this session (the first one is the self-introduction) */
+  userTurns = 0;
+  /** how long you took to start answering after she finished, per turn (for progress) */
+  startDelays: number[] = [];
+  helps = 0;
+  private waitingSince: number | null = null;   // when she finished and your turn began (kept across help nudges)
   private echoUntil = 0;       // ignore the mic until then (her voice coming back through the speaker)
   private loudInTurn = 0;
 
@@ -60,6 +67,7 @@ export class TurnController {
     if (this.state === "youSpeaking") return;
     this.set("yourTurn");
     this.helpAt = now + this.timing.helpAfterMs;
+    if (this.waitingSince === null) this.waitingSince = now;
     this.echoUntil = now + ECHO_TAIL_MS;
     this.preroll = [];
     this.loudRun = 0;
@@ -80,9 +88,7 @@ export class TurnController {
   finish() {
     if (this.state !== "youSpeaking") return;
     if (this.batch.length) this.ev.audio(this.batch.splice(0));
-    this.ev.endActivity();
-    this.thinkingUntil = 0;
-    this.set("awaitingBot");
+    this.endTurn();
   }
 
   thinkingLeft(now: number) {
@@ -124,6 +130,7 @@ export class TurnController {
       this.loudRun = rms > thr ? this.loudRun + 1 : 0;
       const needed = guarded ? 12 : 4;   // 240 ms when guarded, 80 ms on your turn
       if (this.loudRun >= needed) {
+        if (this.waitingSince !== null) { this.startDelays.push(now - this.waitingSince); this.waitingSince = null; }
         this.ev.startActivity(this.preroll.splice(0));
         this.helpsThisWait = 0;   // you spoke, so she may help again later
         this.set("youSpeaking");
@@ -134,6 +141,7 @@ export class TurnController {
         this.speechLevel = Math.max(rms, speakingThreshold * 1.5);
       } else if (this.state === "yourTurn" && now >= this.helpAt && this.helpsThisWait < 2) {
         this.helpsThisWait++;
+        this.helps++;
         this.helpAt = now + this.timing.helpAfterMs + 3000;
         this.ev.askForHelp();
         this.set("awaitingBot");
@@ -155,12 +163,20 @@ export class TurnController {
       this.floor = this.floor * 0.99 + Math.max(0.0015, rms) * 0.01;
     }
     const thinkingHeld = now < this.thinkingUntil;
-    if ((this.silenceMs >= this.timing.pauseToleranceMs && !thinkingHeld) || now - this.turnStart > MAX_TURN_MS) {
+    const intro = this.userTurns === 0;
+    const pauseOk = intro ? Math.max(this.timing.introPauseMs ?? 0, this.timing.pauseToleranceMs) : this.timing.pauseToleranceMs;
+    const maxTurn = intro ? MAX_INTRO_MS : MAX_TURN_MS;
+    if ((this.silenceMs >= pauseOk && !thinkingHeld) || now - this.turnStart > maxTurn) {
       if (this.batch.length) this.ev.audio(this.batch.splice(0));
-      this.ev.endActivity();
-      this.thinkingUntil = 0;
-      this.set("awaitingBot");
+      this.endTurn();
     }
+  }
+
+  private endTurn() {
+    this.ev.endActivity();
+    this.thinkingUntil = 0;
+    this.userTurns++;
+    this.set("awaitingBot");
   }
 
   private set(s: TurnState) {

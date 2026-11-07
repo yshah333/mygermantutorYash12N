@@ -28,8 +28,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Wrong passcode." }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { level?: string; resume?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { level?: string; resume?: boolean; unit?: number; session?: number };
   const level: Level = body.level === "A2" || body.level === "B1" ? body.level : "A1";
+  const int = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
+  const choice = level === "A1" ? { unit: int(body.unit), session: int(body.session) } : undefined;
 
   try {
     const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1alpha" } });
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
       token: token.name,
       model: MODEL,
       voice: VOICE,
-      plan: body.resume ? null : buildSession(level),
+      plan: body.resume ? null : buildSession(level, choice),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

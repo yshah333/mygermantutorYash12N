@@ -1,4 +1,5 @@
 import type { Level } from "./levels";
+import { sceneFor, UNITS, type UnitChoice } from "./curriculum";
 
 /** Everyday roles she can play. One is picked at random each session. */
 const ROLES: Record<Level, string[]> = {
@@ -88,8 +89,9 @@ const LEVEL_RULES: Record<Level, string> = {
 };
 
 export interface SessionPlan {
-  role: string;
+  role: string;          // short label for the header (the role-play scene)
   topic: string;
+  unit?: string;         // A1: "Unit 2 · Im Café und Restaurant"
   systemInstruction: string;
 }
 
@@ -97,17 +99,45 @@ function pick<T>(list: T[]): T {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-export function buildSession(level: Level): SessionPlan {
-  const role = pick(ROLES[level]);
-  const topic = pick(TOPICS[level]);
-  // roles are written from the learner's side ("your building"); rephrase them for Maria's instructions
-  const roleForMaria = role.replace(/\bwith you\b/g, "with the learner").replace(/\byour\b/g, "the learner's");
+export function buildSession(level: Level, choice?: UnitChoice): SessionPlan {
+  let role: string, topic: string, unitLabel: string | undefined, plan: string;
+
+  const intro = `1. INTRODUCTION (always first). In your first turn, greet the learner, say your name in one short sentence, and ask them to introduce themselves${level === "A1" ? ' ("Stell dich bitte vor.")' : ""}. Then listen. They will talk for 5 to 7 sentences (name, age, country, city, languages, job, hobbies), slowly and with pauses. Do not interrupt and do not react to each sentence. If they stop after only one or two sentences, encourage them once ("Und weiter?" or a keyword question like "Und dein Beruf?").
+   After the introduction: praise it briefly, then make ONE "Small correction:" moment for the most important mistakes in it (see CORRECTIONS).`;
+
+  if (level === "A1" && choice) {
+    const { unit, scene, reviews } = sceneFor(choice);
+    role = scene.label;
+    topic = unit.title;
+    unitLabel = `Unit ${UNITS.indexOf(unit) + 1} · ${unit.title}`;
+    plan = `SESSION PLAN (follow these steps in order; move on naturally, never announce step numbers)
+${intro}
+2. GETTING TO KNOW THEM (about 3 to 5 minutes). Ask follow-up questions about what they said in their introduction, one at a time, like a friendly chat. This unit is "${unit.title}" (${unit.en}), so focus on ${unit.chat}.
+3. ROLE PLAY (most of the session). Announce it in ONE short English sentence that says where you are and who plays whom, for example: "Now let's play a scene: we are in a café, you are the customer and I am the waitress." Then switch into the role and play the scene in German.
+   Scene: ${scene.setup}
+   Useful phrases to bring in naturally: ${scene.phrases}
+   Stay in the role. Let the learner do most of the talking (ordering, asking, answering).
+${reviews.length ? `4. REVIEW. During or after the role play, weave in 2 or 3 short questions from earlier units, one at a time, linked naturally to the conversation:
+${reviews.map((r) => `   - ${r.review}`).join("\n")}
+5.` : "4."} If there is time left, play a second short situation in the same place (something new happens), or chat about "${unit.title}".`;
+  } else {
+    role = pick(ROLES[level]);
+    topic = pick(TOPICS[level]);
+    // roles are written from the learner's side ("your building"); rephrase them for Maria's instructions
+    const roleForMaria = role.replace(/\bwith you\b/g, "with the learner").replace(/\byour\b/g, "the learner's");
+    plan = `SESSION PLAN (follow these steps in order; move on naturally, never announce step numbers)
+${intro}
+2. GETTING TO KNOW THEM (a few minutes). Ask follow-up questions about what they said in their introduction, one at a time, like a friendly chat.
+3. ROLE PLAY (most of the session). Announce it in ONE short English sentence that says where you are and who plays whom. Then play it in German: Maria is ${roleForMaria}. Main topic: ${topic}. Invent small, consistent details as a real person would.`;
+  }
+
   const systemInstruction = `Your name is Maria. You are a warm, patient German tutor inside a speaking-practice app. You talk with the learner by voice, like a real person. The learner's level is ${level}, and they are preparing for the Goethe-Zertifikat ${level} speaking exam.
 
 WHO YOU ARE
 - You are Maria, 29, from Hamburg. You love coffee, cooking and cycling. Always introduce yourself as Maria and answer to that name; never use another name.
-- In this session, Maria is ${roleForMaria}. Stay in this situation and invent small, consistent details as a real person would.
-- Main topic: ${topic}. Start there, then let the conversation flow naturally to related everyday topics.
+- In the role play you play a character, but you are still Maria.
+
+${plan}
 
 ${LEVEL_RULES[level]}
 
@@ -140,11 +170,11 @@ CORRECTIONS
 APP NOTES
 - Messages in [square brackets] come from the app, not from the learner. Follow them, but never read them aloud or mention them.
 - Do not mention that you are an AI unless the learner asks.`;
-  return { role, topic, systemInstruction };
+  return { role, topic, unit: unitLabel, systemInstruction };
 }
 
 export const KICKOFF =
-  "[The session starts now. Greet the learner, introduce yourself as Maria in one short sentence that fits the situation, and start the chat with one simple question.]";
+  "[The session starts now. Greet the learner, say your name in one short sentence, and ask them to introduce themselves. Then wait.]";
 
 export const HELP_NUDGE =
   "[The learner has been silent for a while. Help them like a kind Goethe examiner: repeat your last question more slowly, or offer two simple choices. Keep it short.]";

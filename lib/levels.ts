@@ -7,24 +7,26 @@ export interface LevelTiming {
   helpAfterMs: number;
   /** extra time one tap on the thinking button gives */
   thinkingBonusMs: number;
+  /** pause allowed during your self-introduction (the first answer of each session, 5-7 sentences) */
+  introPauseMs: number;
 }
 
 export const LEVELS: Record<Level, { title: string; blurb: string; timing: LevelTiming }> = {
   A1: {
     title: "A1",
     blurb: "Beginner · short, slow sentences",
-    // you think while you speak: a long pause still counts as "still talking" (tap Fertig to hand over sooner)
-    timing: { pauseToleranceMs: 3000, helpAfterMs: 12000, thinkingBonusMs: 10000 },
+    // long thinking time before you start; once you have spoken, 3 s of quiet hands the turn to her
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 12000, thinkingBonusMs: 10000, introPauseMs: 7000 },
   },
   A2: {
     title: "A2",
     blurb: "Elementary · everyday topics",
-    timing: { pauseToleranceMs: 3000, helpAfterMs: 6000, thinkingBonusMs: 10000 },
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 6000, thinkingBonusMs: 10000, introPauseMs: 5000 },
   },
   B1: {
     title: "B1",
     blurb: "Intermediate · opinions and plans",
-    timing: { pauseToleranceMs: 3000, helpAfterMs: 5000, thinkingBonusMs: 10000 },
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 5000, thinkingBonusMs: 10000, introPauseMs: 4000 },
   },
 };
 

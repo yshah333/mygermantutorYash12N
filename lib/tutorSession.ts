@@ -64,7 +64,7 @@ export class TutorSession {
   private reconnectDueBy = 0;   // set by goAway: reconnect at the next quiet moment
   private wakeLock: { release(): Promise<void> } | null = null;
 
-  constructor(private levelName: Level, private passcode: string, private cb: SessionCallbacks) {}
+  constructor(private levelName: Level, private passcode: string, private cb: SessionCallbacks, private choice?: { unit: number; session: number }) {}
 
   /** Call from a tap: browsers only allow audio to start after a user gesture. */
   async start() {
@@ -134,7 +134,7 @@ export class TutorSession {
     const res = await fetch("/api/token", {
       method: "POST",
       headers: { "content-type": "application/json", "x-passcode": this.passcode },
-      body: JSON.stringify({ level: this.levelName, resume }),
+      body: JSON.stringify({ level: this.levelName, resume, ...(this.choice ?? {}) }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { this.dbg(`token request failed: ${res.status} ${data.error ?? ""}`); throw new Error(data.error || `Could not start a session (${res.status}).`); }

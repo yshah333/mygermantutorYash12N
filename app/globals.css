@@ -85,3 +85,16 @@ button.status { border: none; cursor: pointer; font: inherit; font-size: 14px; f
 .avatar-thumb { opacity: 0; transform: translateY(40px); transition: opacity .2s ease, transform .22s cubic-bezier(.2,.8,.2,1); }
 .avatar-thumb.on { opacity: 1; transform: translateY(0); }
 @media (max-height: 700px) { .session .avatar { max-width: 340px; margin: 0 auto; } }
+
+/* A1 units */
+.unit-pick { display: grid; gap: 6px; margin-bottom: 14px; }
+.unit-pick select { font: inherit; font-weight: 600; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.unit-day { font-size: 13px; color: var(--muted); }
+.intro-hint { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); display: grid; gap: 8px; }
+.intro-title { font-size: 13px; font-weight: 700; color: var(--accent); }
+.intro-hint .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-word { font-size: 14px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+.intro-note { font-size: 12px; color: var(--muted); }
+.outcome { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px; }
+.outcome p { margin: 0 0 4px; }
+.outcome p:last-child { margin-bottom: 0; }
