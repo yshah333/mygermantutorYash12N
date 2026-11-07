@@ -62,6 +62,15 @@ export class TurnController {
     if (this.state === "yourTurn") this.helpAt = Math.max(this.helpAt, this.thinkingUntil);
   }
 
+  /** the "Fertig" button: you're done, hand the turn to her now */
+  finish() {
+    if (this.state !== "youSpeaking") return;
+    if (this.batch.length) this.ev.audio(this.batch.splice(0));
+    this.ev.endActivity();
+    this.thinkingUntil = 0;
+    this.set("awaitingBot");
+  }
+
   thinkingLeft(now: number) {
     return Math.max(0, this.thinkingUntil - now);
   }

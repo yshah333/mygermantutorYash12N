@@ -92,6 +92,11 @@ export class TutorSession {
     if (!this.ended) this.turns.thinking(performance.now());
   }
 
+  /** the "Fertig" button */
+  done() {
+    if (!this.ended) this.turns.finish();
+  }
+
   async end() {
     if (this.ended) return;
     this.ended = true;

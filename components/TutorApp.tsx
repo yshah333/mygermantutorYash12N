@@ -141,11 +141,16 @@ export default function TutorApp() {
           {lastYou && <p className="you">You: {lastYou.text}</p>}
         </section>
 
-        <button className={`think ${thinkLeft > 0 ? "on" : ""}`} onClick={() => sessionRef.current?.think()} disabled={!connected}>
-          <span className="think-label">{thinkLeft > 0 ? `Moment… ${Math.ceil(thinkLeft / 1000)} s` : "Moment, bitte  ·  +10 s"}</span>
-          <span className="think-bar" style={{ transform: `scaleX(${Math.min(1, thinkLeft / 10000)})` }} />
-        </button>
-        <p className="hint">Tap when you need time to build your sentence. Headphones work best.</p>
+        <div className="controls">
+          <button className={`think ${thinkLeft > 0 ? "on" : ""}`} onClick={() => sessionRef.current?.think()} disabled={!connected}>
+            <span className="think-label">{thinkLeft > 0 ? `Moment… ${Math.ceil(thinkLeft / 1000)} s` : "Moment, bitte · +10 s"}</span>
+            <span className="think-bar" style={{ transform: `scaleX(${Math.min(1, thinkLeft / 10000)})` }} />
+          </button>
+          <button className="done" onClick={() => sessionRef.current?.done()} disabled={turn !== "youSpeaking"}>
+            Fertig ✓
+          </button>
+        </div>
+        <p className="hint">“Moment” gives you more time. “Fertig” tells her you’re done. Headphones work best.</p>
       </main>
     );
   }
@@ -205,7 +210,7 @@ export default function TutorApp() {
       <button className="primary big" onClick={start} disabled={starting}>
         {starting ? "Starting…" : `Start ${level} conversation`}
       </button>
-      <p className="hint">She speaks first. Talk naturally; tap “Moment, bitte” when you need time to think.</p>
+      <p className="hint">She speaks first and waits for you. Tap “Fertig” when you finish your answer.</p>
     </main>
   );
 }

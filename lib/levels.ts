@@ -13,17 +13,18 @@ export const LEVELS: Record<Level, { title: string; blurb: string; timing: Level
   A1: {
     title: "A1",
     blurb: "Beginner · short, slow sentences",
-    timing: { pauseToleranceMs: 2500, helpAfterMs: 5000, thinkingBonusMs: 10000 },
+    // you think while you speak: a long pause still counts as "still talking" (tap Fertig to hand over sooner)
+    timing: { pauseToleranceMs: 10000, helpAfterMs: 12000, thinkingBonusMs: 10000 },
   },
   A2: {
     title: "A2",
     blurb: "Elementary · everyday topics",
-    timing: { pauseToleranceMs: 2000, helpAfterMs: 5000, thinkingBonusMs: 10000 },
+    timing: { pauseToleranceMs: 5000, helpAfterMs: 6000, thinkingBonusMs: 10000 },
   },
   B1: {
     title: "B1",
     blurb: "Intermediate · opinions and plans",
-    timing: { pauseToleranceMs: 1600, helpAfterMs: 5000, thinkingBonusMs: 10000 },
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 5000, thinkingBonusMs: 10000 },
   },
 };
 
