@@ -19,6 +19,8 @@ const FRAME_MS = 20;
 const PREROLL_FRAMES = 15;      // keep 300 ms before speech starts
 const BATCH_FRAMES = 5;         // send 100 ms per message
 const MAX_TURN_MS = 45000;
+const ECHO_TAIL_MS = 450;       // her voice still echoes in the room / speaker just after she stops
+const SUSTAIN_FRAMES = 3;       // 60 ms of sound needed to count as speech again (clicks, bumps don't count)
 
 /**
  * Our own turn-taking (Gemini's automatic detection is switched off), so we control:
@@ -41,6 +43,8 @@ export class TurnController {
   private helpAt = 0;
   private helpsThisWait = 0;   // help nudges since you last spoke (max 2)
   private paused = false;
+  private echoUntil = 0;       // ignore the mic until then (her voice coming back through the speaker)
+  private loudInTurn = 0;
 
   constructor(private timing: LevelTiming, private ev: TurnEvents) {}
 
@@ -56,6 +60,14 @@ export class TurnController {
     if (this.state === "youSpeaking") return;
     this.set("yourTurn");
     this.helpAt = now + this.timing.helpAfterMs;
+    this.echoUntil = now + ECHO_TAIL_MS;
+    this.preroll = [];
+    this.loudRun = 0;
+  }
+
+  /** how long you have been quiet in your current turn (for the diagnostics log) */
+  quietMs() {
+    return this.state === "youSpeaking" ? this.silenceMs : 0;
   }
 
   /** the thinking button: +10 s, stackable */
@@ -80,6 +92,18 @@ export class TurnController {
   /** one 20 ms microphone frame */
   frame(pcm: Int16Array, rms: number, now: number) {
     this.lastRms = rms;
+    // While she talks, the phone's mic hears her own voice from the speaker (iPhone echo cancellation
+    // doesn't cover web audio). So her speech never counts as you, and it doesn't skew the noise estimate.
+    if (this.state === "botSpeaking") {
+      this.loudRun = 0;
+      return;
+    }
+    if (now < this.echoUntil) {
+      // just after she stops: keep recording (so a quick answer keeps its first syllable) but don't decide yet
+      if (!this.paused) { this.preroll.push(pcm); if (this.preroll.length > PREROLL_FRAMES) this.preroll.shift(); }
+      this.loudRun = 0;
+      return;
+    }
     // background-noise estimate: drops fast, rises slowly, so steady noise (air-con, fan) is learned
     // within a few seconds. It keeps calibrating even while the mic is held during her greeting.
     if (this.state !== "youSpeaking") {
@@ -94,20 +118,19 @@ export class TurnController {
     if (this.state !== "youSpeaking") {
       this.preroll.push(pcm);
       if (this.preroll.length > PREROLL_FRAMES) this.preroll.shift();
-      const herTurn = this.state === "botSpeaking";
-      // while she talks or is about to answer, only clear, sustained speech counts (noise must not cancel her)
-      const guarded = herTurn || this.state === "awaitingBot";
+      // while her answer is on its way, only clear, sustained speech counts (noise must not cancel her)
+      const guarded = this.state === "awaitingBot";
       const thr = guarded ? bargeThreshold : speakingThreshold;
       this.loudRun = rms > thr ? this.loudRun + 1 : 0;
       const needed = guarded ? 12 : 4;   // 240 ms when guarded, 80 ms on your turn
       if (this.loudRun >= needed) {
-        if (herTurn) this.ev.interruptPlayback();
         this.ev.startActivity(this.preroll.splice(0));
         this.helpsThisWait = 0;   // you spoke, so she may help again later
         this.set("youSpeaking");
         this.silenceMs = 0;
         this.turnStart = now;
         this.loudRun = 0;
+        this.loudInTurn = 0;
         this.speechLevel = Math.max(rms, speakingThreshold * 1.5);
       } else if (this.state === "yourTurn" && now >= this.helpAt && this.helpsThisWait < 2) {
         this.helpsThisWait++;
@@ -123,7 +146,8 @@ export class TurnController {
     if (this.batch.length >= BATCH_FRAMES) this.ev.audio(this.batch.splice(0));
     // "silence" is relative to how loud you speak, so steady background noise (air-con, fan) still counts as a pause
     const quietBelow = Math.max(keepThreshold, this.speechLevel * 0.3);
-    if (rms > quietBelow) {
+    this.loudInTurn = rms > quietBelow ? this.loudInTurn + 1 : 0;
+    if (this.loudInTurn >= SUSTAIN_FRAMES) {
       this.silenceMs = 0;
       this.speechLevel = this.speechLevel * 0.95 + rms * 0.05;
     } else {

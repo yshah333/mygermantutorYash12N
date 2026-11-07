@@ -318,7 +318,7 @@ export class TutorSession {
     }
 
     const st = this.turns.state;
-    if (now - this.lastStats > 3000) { this.lastStats = now; this.dbg(`mic ${this.turns.lastRms.toFixed(3)} · noise ${this.turns.floor.toFixed(3)} · ${st}${playing ? " · playing" : ""}`); }
+    if (now - this.lastStats > 3000) { this.lastStats = now; this.dbg(`mic ${this.turns.lastRms.toFixed(3)} · noise ${this.turns.floor.toFixed(3)} · ${st}${st === "youSpeaking" ? ` · quiet ${(this.turns.quietMs() / 1000).toFixed(1)}s` : ""}${playing ? " · playing" : ""}`); }
     if (this.reconnectDueBy && ((!playing && st !== "youSpeaking") || now > this.reconnectDueBy)) this.reconnect();
     this.bus.level = this.player.level();
     this.bus.mode = playing ? "speaking"
