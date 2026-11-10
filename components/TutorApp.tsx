@@ -152,7 +152,6 @@ export default function TutorApp() {
     : "…";
 
   const shown = lines.filter((l) => l.text.trim());
-  const lastTutor = [...shown].reverse().find((l) => l.who === "tutor");
   const lastYou = [...shown].reverse().find((l) => l.who === "you");
 
   if (screen === "session") {
@@ -177,13 +176,8 @@ export default function TutorApp() {
         )}
 
         <section className="captions" aria-live="polite">
-          {lastTutor ? (
-            <p className={`tutor ${lastTutor.correction ? "correction" : ""}`}>
-              {lastTutor.correction && <span className="tag">Correction</span>}
-              {lastTutor.text}
-            </p>
-          ) : <p className="tutor muted">{starting ? "Allow the microphone, then Maria will greet you." : "…"}</p>}
-          {lastYou && <p className="you">You: {lastYou.text}</p>}
+          {/* no captions while talking: listening practice. The full transcript is on the summary screen. */}
+          {!connected && <p className="tutor muted">{starting ? "Allow the microphone, then Maria will greet you." : "…"}</p>}
           {connected && !lastYou && (
             <div className="intro-hint">
               <span className="intro-title">Introduce yourself</span>
@@ -202,7 +196,7 @@ export default function TutorApp() {
             Fertig ✓
           </button>
         </div>
-        <p className="hint">“Moment” gives you more time. “Fertig” tells Maria you’re done. Headphones work best.</p>
+        <p className="hint">Didn’t understand? Say “Wie bitte?” or “Was bedeutet …?” “Moment” gives you more time, “Fertig” hands over to Maria.</p>
       </main>
     );
   }

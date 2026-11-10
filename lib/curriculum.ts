@@ -14,6 +14,7 @@ export interface Unit {
   en: string;        // English name
   chat: string;      // what to ask about after the introduction
   review: string;    // what a review question from this unit looks like
+  askWords: string[]; // word cards for "your turn to ask" (Goethe A1 part 2)
   scenes: Scene[];
 }
 
@@ -28,6 +29,7 @@ export const UNITS: Unit[] = [
     en: "Me and my family",
     chat: "their family: parents (where they live, what they do), brothers and sisters (names, age, jobs), whether they are married or have children; also their own job and where they live",
     review: "a simple question about their family or job (Hast du Geschwister? Was macht dein Vater?)",
+    askWords: ["Bruder", "Beruf", "Kinder", "Sprachen", "Geburtstag"],
     scenes: [
       { label: "New neighbour", setup: "the stairs of an apartment building in Hamburg. Maria is the learner's new neighbour; they meet for the first time and get to know each other.", phrases: "Ich wohne im zweiten Stock. Woher kommst du? Wohnst du allein?" },
       { label: "First day of German class", setup: "the first day of a German course in Berlin. Maria is a classmate sitting next to the learner; they chat in the break.", phrases: "Wie heißt du? Was machst du beruflich? Warum lernst du Deutsch?" },
@@ -41,6 +43,7 @@ export const UNITS: Unit[] = [
     en: "Café and restaurant",
     chat: "food and drinks: what they like to eat and drink, breakfast, coffee or tea, cooking at home, favourite food from their country",
     review: "a simple question about food or drinks (Was trinkst du gern? Was isst du zum Frühstück?)",
+    askWords: ["Frühstück", "Kaffee", "Lieblingsessen", "kochen", "Restaurant"],
     scenes: [
       { label: "Café · you're the customer", setup: "a café in Berlin. Maria is the waitress; the learner is a customer who orders a drink and cake, asks the price and pays.", phrases: "Was möchten Sie? Ich möchte einen Kaffee, bitte. Was kostet das? Zahlen, bitte." },
       { label: "Bakery", setup: "a bakery in Munich in the morning. Maria is the baker; the learner buys bread and rolls for breakfast.", phrases: "Ich hätte gern drei Brötchen. Noch etwas? Das macht 2,40 Euro." },
@@ -54,6 +57,7 @@ export const UNITS: Unit[] = [
     en: "Shopping",
     chat: "shopping: where they buy food, what they buy every week, prices in their city, whether they like shopping",
     review: "a simple question about shopping (Wo kaufst du ein? Was kostet ein Kaffee in Dubai?)",
+    askWords: ["Supermarkt", "Preis", "Kleidung", "Geschenk", "Markt"],
     scenes: [
       { label: "Supermarket", setup: "a supermarket. Maria works there; the learner asks where things are (milk, rice, eggs) and how much they cost.", phrases: "Entschuldigung, wo ist die Milch? Im Regal links. Was kostet das?" },
       { label: "Clothes shop", setup: "a clothes shop in Frankfurt. Maria is the shop assistant; the learner looks for a shirt or jacket and talks about size, colour and price.", phrases: "Ich suche eine Jacke. Welche Größe? Haben Sie das in Blau? Das ist zu teuer." },
@@ -67,6 +71,7 @@ export const UNITS: Unit[] = [
     en: "Home",
     chat: "their flat or house: how many rooms, big or small, what is in the living room, the neighbourhood, who they live with",
     review: "a simple question about their home (Wie viele Zimmer hat deine Wohnung? Wohnst du allein?)",
+    askWords: ["Wohnung", "Zimmer", "Küche", "Nachbarn", "Miete"],
     scenes: [
       { label: "Flat viewing", setup: "an empty flat in Hamburg. Maria is the landlady showing the flat; the learner asks about rooms, rent and the kitchen.", phrases: "Wie groß ist die Wohnung? Wie hoch ist die Miete? Gibt es einen Balkon?" },
       { label: "Furniture shop", setup: "a furniture shop. Maria is the shop assistant; the learner needs a table, a bed or a sofa for a new flat.", phrases: "Ich brauche einen Tisch. Wie viel kostet das Sofa? Liefern Sie auch?" },
@@ -80,6 +85,7 @@ export const UNITS: Unit[] = [
     en: "Free time and appointments",
     chat: "free time: hobbies, sport, what they do at the weekend, days and times, what they like to do in the evening",
     review: "a simple question about free time or times (Was machst du am Wochenende? Wann stehst du auf?)",
+    askWords: ["Wochenende", "Sport", "Kino", "Musik", "Urlaub"],
     scenes: [
       { label: "Weekend plans", setup: "a phone call. Maria is a friend; they plan to do something together at the weekend and agree on a day and time.", phrases: "Hast du am Samstag Zeit? Um wie viel Uhr? Treffen wir uns am Bahnhof?" },
       { label: "Cinema tickets", setup: "a cinema ticket desk. Maria sells tickets; the learner buys tickets for a film and asks about times and prices.", phrases: "Zwei Karten für acht Uhr, bitte. Wann beginnt der Film?" },
@@ -93,6 +99,7 @@ export const UNITS: Unit[] = [
     en: "Out and about",
     chat: "travel and transport: how they go to work, car or metro, trips they have made, their favourite city",
     review: "a simple question about transport or travel (Wie fährst du zur Arbeit? Fährst du gern Zug?)",
+    askWords: ["Zug", "Auto", "Urlaub", "Stadt", "Flughafen"],
     scenes: [
       { label: "Train ticket", setup: "the ticket office at a train station in Leipzig. Maria sells tickets; the learner buys a ticket and asks about the time and platform.", phrases: "Eine Fahrkarte nach Berlin, bitte. Einfach oder hin und zurück? Von welchem Gleis?" },
       { label: "Asking the way", setup: "a street in Munich. Maria is a local; the learner asks the way to the station, a bank or a pharmacy.", phrases: "Entschuldigung, wo ist der Bahnhof? Geradeaus und dann links. Ist das weit?" },
@@ -106,6 +113,7 @@ export const UNITS: Unit[] = [
     en: "Health",
     chat: "health: sport, healthy food, what they do when they feel sick, how they feel today",
     review: "a simple question about health (Machst du Sport? Was machst du, wenn du krank bist?)",
+    askWords: ["Arzt", "Obst", "schlafen", "Sport", "krank"],
     scenes: [
       { label: "Doctor's appointment by phone", setup: "a phone call to a doctor's practice. Maria is the receptionist; the learner makes an appointment and says what is wrong.", phrases: "Ich brauche einen Termin. Was fehlt Ihnen? Ich habe Kopfschmerzen." },
       { label: "At the doctor", setup: "a doctor's office. Maria is the doctor; the learner explains what hurts.", phrases: "Wo tut es weh? Mein Bauch tut weh. Seit wann?" },
@@ -119,6 +127,7 @@ export const UNITS: Unit[] = [
     en: "Work and daily life",
     chat: "work and daily routine: when they get up, working hours, what they do at work, their evenings",
     review: "a simple question about work or the day (Wann beginnt deine Arbeit? Was machst du am Abend?)",
+    askWords: ["Arbeit", "Büro", "Kollegen", "Feierabend", "aufstehen"],
     scenes: [
       { label: "New colleague", setup: "an office kitchen. Maria is a new colleague on her first day; she and the learner get to know each other.", phrases: "Ich bin neu hier. In welcher Abteilung arbeitest du? Seit wann bist du hier?" },
       { label: "A normal day", setup: "a lunch break. Maria and the learner are colleagues and talk about their normal day.", phrases: "Wann stehst du auf? Ich fange um neun an. Und nach der Arbeit?" },
