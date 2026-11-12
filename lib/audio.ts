@@ -1,5 +1,6 @@
 /** Microphone → 20 ms frames of 16 kHz PCM16 (via an AudioWorklet), with loudness. */
 export class MicCapture {
+  private static loaded = new WeakSet<BaseAudioContext>();
   private stream?: MediaStream;
   private node?: AudioWorkletNode;
   private src?: MediaStreamAudioSourceNode;
@@ -11,7 +12,10 @@ export class MicCapture {
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
     });
-    await this.ctx.audioWorklet.addModule("/worklets/mic-processor.js");
+    if (!MicCapture.loaded.has(this.ctx)) {
+      await this.ctx.audioWorklet.addModule("/worklets/mic-processor.js");
+      MicCapture.loaded.add(this.ctx);
+    }
     this.node = new AudioWorkletNode(this.ctx, "mic-processor");
     this.node.port.onmessage = (e: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) =>
       this.onFrame(new Int16Array(e.data.pcm), e.data.rms);
@@ -22,6 +26,12 @@ export class MicCapture {
     this.src.connect(this.node);
     this.node.connect(this.sink);
     this.sink.connect(this.ctx.destination);
+  }
+
+  /** true once the phone has ended the microphone (it then feeds silence instead of sound) */
+  get ended() {
+    const tracks = this.stream?.getAudioTracks() ?? [];
+    return tracks.length > 0 && tracks.every((t) => t.readyState === "ended");
   }
 
   stop() {

@@ -23,6 +23,10 @@ export interface SessionCallbacks {
   onEnded(): void;
 }
 
+const ANSWER_NUDGE = "[Please continue the conversation out loud now, briefly and simply.]";
+const withTimeout = <T,>(p: Promise<T>, ms: number, what: string) =>
+  Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`${what} took too long. Check your internet and try again.`)), ms))]);
+
 const PRAISE = /^\s*(super|genau|sehr gut|perfekt|toll|prima|klasse|richtig|wunderbar)\b/i;
 const CORRECTION = /small correction/i;
 
@@ -63,6 +67,18 @@ export class TutorSession {
   log: string[] = [];
   private reconnectDueBy = 0;   // set by goAway: reconnect at the next quiet moment
   private wakeLock: { release(): Promise<void> } | null = null;
+  // ---- watchdogs: nothing may hang forever ----
+  private lastAudioAt = 0;        // last chunk of her voice received
+  private lastFrameAt = 0;        // last microphone frame
+  private stateSince = 0;         // when the turn state last changed
+  private waitStage = 0;          // recovery steps taken while waiting for her reply
+  private nudgeAfterSetup = false;
+  private connectedAt = 0;
+  private timeUpAt = 0;
+  private audioPausedSince = 0;
+  private lastResumeTry = 0;
+  private tapToResume = false;
+  private restartingMic = false;
 
   constructor(private levelName: Level, private passcode: string, private cb: SessionCallbacks, private choice?: { unit: number; session: number }) {}
 
@@ -83,12 +99,13 @@ export class TutorSession {
       endActivity: () => { this.dbg("your turn ended"); this.nudgedEmpty = false; this.send({ activityEnd: {} }); },
       askForHelp: () => { this.dbg("silence: asking Maria to help"); this.sendText(HELP_NUDGE); },
       interruptPlayback: () => { this.player.stopAll(); this.botTurnOpen = false; this.turnDone = false; },
-      stateChanged: (s) => this.cb.onTurn(s),
+      stateChanged: (s) => { this.stateSince = performance.now(); this.waitStage = 0; this.cb.onTurn(s); },
     });
     this.turns.setPaused(true);
     this.dbg("audio ready, asking for microphone");
-    this.mic = new MicCapture(this.ctx, (pcm, rms) => this.turns.frame(pcm, rms, performance.now()));
+    this.mic = new MicCapture(this.ctx, this.onMicFrame);
     await this.mic.start();
+    this.lastFrameAt = performance.now();
     this.dbg(`microphone on (${this.ctx.sampleRate} Hz)`);
     await this.connect(false);
     this.endsAt = performance.now() + SESSION_MINUTES * 60_000;
@@ -98,6 +115,11 @@ export class TutorSession {
     } catch { /* screen may still dim; not critical */ }
     this.loop();
   }
+
+  private onMicFrame = (pcm: Int16Array, rms: number) => {
+    this.lastFrameAt = performance.now();
+    this.turns.frame(pcm, rms, this.lastFrameAt);
+  };
 
   dbg(msg: string) {
     const t = ((performance.now() - this.t0) / 1000).toFixed(1).padStart(6);
@@ -119,6 +141,7 @@ export class TutorSession {
     if (this.ended) return;
     this.ended = true;
     cancelAnimationFrame(this.raf);
+    document.removeEventListener("pointerdown", this.resumeOnTap);
     this.turns?.setPaused(true);
     try { this.session?.close(); } catch { /* closed */ }
     this.mic?.stop();
@@ -131,11 +154,11 @@ export class TutorSession {
   // ---------- connection ----------
 
   private async connect(resume: boolean) {
-    const res = await fetch("/api/token", {
+    const res = await withTimeout(fetch("/api/token", {
       method: "POST",
       headers: { "content-type": "application/json", "x-passcode": this.passcode },
       body: JSON.stringify({ level: this.levelName, resume, ...(this.choice ?? {}) }),
-    });
+    }), 15000, "Starting the session");
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { this.dbg(`token request failed: ${res.status} ${data.error ?? ""}`); throw new Error(data.error || `Could not start a session (${res.status}).`); }
     this.dbg(`token ok${resume ? " (resume)" : ""}: model ${data.model}, voice ${data.voice}`);
@@ -148,7 +171,7 @@ export class TutorSession {
     const ai = new GoogleGenAI({ apiKey: data.token, httpOptions: { apiVersion: "v1alpha" } });
     this.setupDone = false;
     const id = ++this.connId;   // events from an older, replaced connection are ignored
-    this.session = await ai.live.connect({
+    const opening = ai.live.connect({
       model: this.model,
       config: {
         responseModalities: [Modality.AUDIO],
@@ -166,6 +189,13 @@ export class TutorSession {
         onclose: (e) => { if (id === this.connId) { this.dbg(`connection closed: code ${e.code} ${e.reason ?? ""}`); this.onClose(e); } },
       },
     });
+    try {
+      this.session = await withTimeout(opening, 15000, "Connecting to Maria");
+    } catch (e) {
+      opening.then((s) => s.close()).catch(() => {});   // close it if it opens late
+      throw e;
+    }
+    this.connectedAt = performance.now();
     this.afterSetup();
   }
 
@@ -176,6 +206,7 @@ export class TutorSession {
     this.dbg("connected (setup complete)");
     if (!this.kickedOff) {
       this.kickedOff = true;
+      this.stateSince = performance.now();
       this.sendText(KICKOFF);
       this.dbg("asked Maria to greet you");
       // keep the mic out of it until her greeting starts, so noise can't cancel it
@@ -183,6 +214,7 @@ export class TutorSession {
       return;
     }
     this.turns.setPaused(false);
+    if (this.nudgeAfterSetup) { this.nudgeAfterSetup = false; this.sendText(ANSWER_NUDGE); this.dbg("asked Maria to answer again"); }
   }
 
   private async reconnect() {
@@ -212,9 +244,12 @@ export class TutorSession {
 
   private onClose(e: CloseEvent) {
     if (this.ended || this.reconnecting) return;
-    if (this.handle) { this.reconnect(); return; }
-    this.cb.onError(e.reason ? `Session closed: ${e.reason}` : "The session closed unexpectedly.");
-    this.end();
+    if (e.code === 1008 || e.code === 1007) {   // rejected config or key: retrying won't help
+      this.cb.onError(e.reason ? `Session closed: ${e.reason}` : "The session closed unexpectedly.");
+      this.end();
+      return;
+    }
+    this.reconnect();
   }
 
   private onMessage(m: LiveServerMessage) {
@@ -237,6 +272,7 @@ export class TutorSession {
           if (!this.greeted) { this.greeted = true; this.turns.setPaused(false); }
         }
         this.turnAudio++;
+        this.lastAudioAt = performance.now();
         this.player.enqueueBase64(d.data);
       }
     }
@@ -259,7 +295,7 @@ export class TutorSession {
     } else if (this.greeted && !this.nudgedEmpty) {
       this.nudgedEmpty = true;
       this.dbg("empty reply, asking her to answer out loud");
-      setTimeout(() => this.sendText("[Please answer the learner out loud now, briefly and simply.]"), 400);
+      setTimeout(() => this.sendText(ANSWER_NUDGE), 400);
     }
   }
 
@@ -300,10 +336,98 @@ export class TutorSession {
 
   // ---------- every frame ----------
 
+  private resumeOnTap = () => {
+    this.ctx?.resume().catch(() => {});
+  };
+
+  private async restartMic() {
+    this.restartingMic = true;
+    this.dbg("microphone stopped, restarting it");
+    try { this.mic.stop(); } catch { /* already stopped */ }
+    try {
+      this.mic = new MicCapture(this.ctx, this.onMicFrame);
+      await this.mic.start();
+      this.dbg("microphone back on");
+    } catch {
+      this.cb.onNotice("Microphone stopped. Tap End and start again.");
+    }
+    this.lastFrameAt = performance.now();
+    this.restartingMic = false;
+  }
+
+  /** Recover from every state that could otherwise hang forever. Returns false if the session ended. */
+  private watchdogs(now: number, playing: boolean): boolean {
+    // 1) iPhone paused the audio (a call, a WhatsApp sound, switching apps, screen lock).
+    //    Its clock stops too, so she would look like she's speaking forever.
+    if (this.ctx.state !== "running") {
+      if (!this.audioPausedSince) { this.audioPausedSince = now; this.dbg(`audio paused by the phone (${this.ctx.state})`); }
+      if (now - this.lastResumeTry > 1000) { this.lastResumeTry = now; this.ctx.resume().catch(() => {}); }
+      if (now - this.audioPausedSince > 1500 && !this.tapToResume) {
+        this.tapToResume = true;
+        this.cb.onNotice("Audio paused. Tap anywhere to continue.");
+        document.addEventListener("pointerdown", this.resumeOnTap);
+      }
+      return true;   // the other checks wait until audio runs again
+    }
+    if (this.audioPausedSince) {
+      this.audioPausedSince = 0;
+      this.lastFrameAt = now;
+      this.stateSince = Math.max(this.stateSince, now - 1000);   // don't count the pause as her being silent
+      this.dbg("audio running again");
+      if (this.tapToResume) { this.tapToResume = false; document.removeEventListener("pointerdown", this.resumeOnTap); this.cb.onNotice(null); }
+    }
+    if (this.reconnecting) return true;
+
+    // 2) the microphone stopped sending sound (iPhone can end it after an interruption)
+    if (!this.restartingMic && (now - this.lastFrameAt > 3000 || this.mic.ended)) this.restartMic();
+
+    // 3) connected, but the server never finished setting up
+    if (this.session && !this.setupDone && this.connectedAt && now - this.connectedAt > 10000) {
+      this.dbg("no answer from the server after connecting, reconnecting");
+      this.reconnect();
+      return true;
+    }
+
+    const st = this.turns.state;
+    // 4) waiting for her reply, but nothing comes: ask again, then reconnect, then give you the turn back
+    if (st === "awaitingBot" && !playing && !this.botTurnOpen && !this.closingAfterTurn && this.setupDone) {
+      const waited = now - this.stateSince;
+      if (this.waitStage === 0 && waited > 8000) {
+        this.waitStage = 1;
+        this.dbg("no reply from Maria after 8 s, asking again");
+        this.sendText(this.greeted ? ANSWER_NUDGE : KICKOFF);
+      } else if (this.waitStage === 1 && waited > 18000) {
+        this.waitStage = 2;
+        this.dbg("still no reply, reconnecting");
+        this.nudgeAfterSetup = true;
+        this.reconnect();
+      } else if (this.waitStage === 2 && waited > 32000) {
+        this.waitStage = 3;
+        this.dbg("no reply, giving the turn back to you");
+        this.turns.botFinished(now);
+      }
+    }
+
+    // 5) her reply started but its end never arrived: move on once her audio has stopped for 6 s
+    if (st === "botSpeaking" && !playing && !this.turnDone && now - this.lastAudioAt > 6000) {
+      this.dbg("her reply never finished, moving on");
+      this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; this.turnAudio = 0;
+    }
+
+    // 6) time is up but her goodbye never came
+    if (this.closingAfterTurn && this.timeUpAt && now - this.timeUpAt > 25000) {
+      this.dbg("no goodbye after 25 s, ending");
+      this.end();
+      return false;
+    }
+    return true;
+  }
+
   private loop = () => {
     if (this.ended) return;
     const now = performance.now();
     const playing = this.player.playing;
+    if (!this.watchdogs(now, playing)) return;
 
     if (this.turnDone && !playing) {
       this.turnDone = false;
@@ -312,6 +436,7 @@ export class TutorSession {
     }
     if (!this.timeUpSent && now >= this.endsAt && this.turns.state === "yourTurn") {
       this.timeUpSent = true;
+      this.timeUpAt = now;
       this.closingAfterTurn = true;
       this.turns.setPaused(true);
       this.sendText(TIME_UP);
