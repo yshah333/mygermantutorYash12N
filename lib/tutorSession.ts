@@ -79,6 +79,8 @@ export class TutorSession {
   private lastResumeTry = 0;
   private tapToResume = false;
   private restartingMic = false;
+  private clockMark = { wall: 0, audio: 0 };   // to spot a frozen audio clock
+  private rebuilding = false;
 
   constructor(private levelName: Level, private passcode: string, private cb: SessionCallbacks, private choice?: { unit: number; session: number }) {}
 
@@ -355,6 +357,31 @@ export class TutorSession {
     this.restartingMic = false;
   }
 
+  /** iPhone bug: audio says "running" but its clock is frozen, so playback never "ends" and the mic is dead.
+   *  Rebuild the whole audio chain; her interrupted reply is dropped and it's your turn (say "Wie bitte?"). */
+  private async rebuildAudio() {
+    if (this.rebuilding || this.ended) return;
+    this.rebuilding = true;
+    this.dbg("audio clock frozen, restarting the audio");
+    const wasHers = this.turns.state === "botSpeaking";
+    try { this.mic.stop(); } catch { /* gone */ }
+    try { await this.ctx.close(); } catch { /* closed */ }
+    this.ctx = new AudioContext({ latencyHint: "interactive" });
+    try { await this.ctx.resume(); } catch { /* may need a tap: the paused-audio check handles it */ }
+    this.player = new PcmPlayer(this.ctx);
+    try {
+      this.mic = new MicCapture(this.ctx, this.onMicFrame);
+      await this.mic.start();
+    } catch {
+      this.cb.onNotice("Microphone stopped. Tap End and start again.");
+    }
+    this.lastFrameAt = performance.now();
+    this.clockMark = { wall: 0, audio: 0 };
+    if (wasHers || this.botTurnOpen) { this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; this.turnAudio = 0; }
+    this.dbg(`audio restarted (${this.ctx.state})`);
+    this.rebuilding = false;
+  }
+
   /** Recover from every state that could otherwise hang forever. Returns false if the session ended. */
   private watchdogs(now: number, playing: boolean): boolean {
     // 1) iPhone paused the audio (a call, a WhatsApp sound, switching apps, screen lock).
@@ -362,6 +389,7 @@ export class TutorSession {
     if (this.ctx.state !== "running") {
       if (!this.audioPausedSince) { this.audioPausedSince = now; this.dbg(`audio paused by the phone (${this.ctx.state})`); }
       if (now - this.lastResumeTry > 1000) { this.lastResumeTry = now; this.ctx.resume().catch(() => {}); }
+      this.clockMark = { wall: 0, audio: 0 };
       if (now - this.audioPausedSince > 1500 && !this.tapToResume) {
         this.tapToResume = true;
         this.cb.onNotice("Audio paused. Tap anywhere to continue.");
@@ -375,6 +403,16 @@ export class TutorSession {
       this.stateSince = Math.max(this.stateSince, now - 1000);   // don't count the pause as her being silent
       this.dbg("audio running again");
       if (this.tapToResume) { this.tapToResume = false; document.removeEventListener("pointerdown", this.resumeOnTap); this.cb.onNotice(null); }
+    }
+    if (this.rebuilding) return true;
+
+    // 1b) the audio clock is frozen although the phone says audio is running
+    const wallGap = now - this.clockMark.wall;
+    if (wallGap > 1500) {
+      const audioGap = this.ctx.currentTime - this.clockMark.audio;
+      // a gap over 3 s means this loop itself was paused (app in background): don't judge that
+      if (this.clockMark.wall && wallGap < 3000 && audioGap < (wallGap / 1000) * 0.2) { this.rebuildAudio(); return true; }
+      this.clockMark = { wall: now, audio: this.ctx.currentTime };
     }
     if (this.reconnecting) return true;
 
