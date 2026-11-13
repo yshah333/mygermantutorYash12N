@@ -68,7 +68,9 @@ export class TutorSession {
   private reconnectDueBy = 0;   // set by goAway: reconnect at the next quiet moment
   private wakeLock: { release(): Promise<void> } | null = null;
   // ---- watchdogs: nothing may hang forever ----
-  private lastAudioAt = 0;        // last chunk of her voice received
+  private lastAudioAt = 0;        // last chunk of her voice received (arrives faster than it plays)
+  private lastPlayingAt = 0;      // last moment her voice was actually playing
+  private forcedTurnEnd = false;  // we moved on before her "turn complete" arrived
   private lastFrameAt = 0;        // last microphone frame
   private stateSince = 0;         // when the turn state last changed
   private waitStage = 0;          // recovery steps taken while waiting for her reply
@@ -268,6 +270,7 @@ export class TutorSession {
       if (d?.data && (d.mimeType ?? "").startsWith("audio/")) {
         if (!this.botTurnOpen) {
           this.botTurnOpen = true;
+          this.forcedTurnEnd = false;
           this.turnDone = false;
           this.turns.botAudioStarted();
           this.dbg("Maria started speaking");
@@ -284,7 +287,12 @@ export class TutorSession {
       const chunks = this.turnAudio;
       this.dbg(`Maria's turn complete (${chunks} audio chunks)`);
       this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; this.turnAudio = 0;
-      if (chunks === 0) this.emptyReply();
+      if (chunks === 0 && this.forcedTurnEnd) {
+        // the late end of a reply we already moved on from: not an empty reply, and don't hand over twice
+        this.forcedTurnEnd = false;
+        this.turnDone = false;
+        this.dbg("late end of her reply (already moved on)");
+      } else if (chunks === 0) this.emptyReply();
     }
   }
 
@@ -447,8 +455,10 @@ export class TutorSession {
     }
 
     // 5) her reply started but its end never arrived: move on once her audio has stopped for 6 s
-    if (st === "botSpeaking" && !playing && !this.turnDone && now - this.lastAudioAt > 6000) {
+    if (playing) this.lastPlayingAt = now;
+    if (st === "botSpeaking" && !playing && !this.turnDone && now - Math.max(this.lastAudioAt, this.lastPlayingAt) > 6000) {
       this.dbg("her reply never finished, moving on");
+      this.forcedTurnEnd = true;
       this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; this.turnAudio = 0;
     }
 
