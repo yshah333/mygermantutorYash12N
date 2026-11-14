@@ -28,7 +28,7 @@ const withTimeout = <T,>(p: Promise<T>, ms: number, what: string) =>
   Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`${what} took too long. Check your internet and try again.`)), ms))]);
 
 const PRAISE = /^\s*(super|genau|sehr gut|perfekt|toll|prima|klasse|richtig|wunderbar)\b/i;
-const CORRECTION = /small correction/i;
+const CORRECTION = /small correction|not quite/i;
 
 export class TutorSession {
   bus: AvatarBus = { mode: "idle", level: 0, praiseUntil: 0, ahaUntil: 0 };

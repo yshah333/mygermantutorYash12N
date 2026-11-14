@@ -1,4 +1,4 @@
-export type Level = "A1" | "A2" | "B1";
+export type Level = "A0" | "A1" | "A2" | "B1";
 
 export interface LevelTiming {
   /** how long a pause can last mid-answer before your turn counts as finished */
@@ -12,6 +12,11 @@ export interface LevelTiming {
 }
 
 export const LEVELS: Record<Level, { title: string; blurb: string; timing: LevelTiming }> = {
+  A0: {
+    title: "A0",
+    blurb: "Start · say 20 basic sentences in German",
+    timing: { pauseToleranceMs: 3000, helpAfterMs: 12000, thinkingBonusMs: 10000, introPauseMs: 3000 },
+  },
   A1: {
     title: "A1",
     blurb: "Beginner · short, slow sentences",

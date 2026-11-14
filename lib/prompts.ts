@@ -1,8 +1,10 @@
 import type { Level } from "./levels";
 import { sceneFor, UNITS, type UnitChoice } from "./curriculum";
+import DRILL from "./drill-basics.json";
 
 /** Everyday roles she can play. One is picked at random each session. */
 const ROLES: Record<Level, string[]> = {
+  A0: [],
   A1: [
     "a friendly café worker in Berlin",
     "a baker in a small bakery in Munich",
@@ -37,6 +39,7 @@ const ROLES: Record<Level, string[]> = {
 
 /** Goethe-style topics per level. One is picked at random as the session's main topic. */
 const TOPICS: Record<Level, string[]> = {
+  A0: [],
   A1: [
     "introducing yourself (name, country, city, languages, job, hobbies), including spelling your name and saying numbers",
     "food and drinks: ordering and asking for prices",
@@ -71,6 +74,7 @@ const TOPICS: Record<Level, string[]> = {
 };
 
 const LEVEL_RULES: Record<Level, string> = {
+  A0: "",
   A1: `LANGUAGE LEVEL (A1, absolute beginner) - THIS IS THE MOST IMPORTANT RULE
 - Every turn is tiny: a short reaction, sometimes one tiny fact about yourself, then ONE simple question. At most about 12 words in total.
 - Present tense only. Only the most common words. No subordinate clauses, no "weil", no "dass".
@@ -99,7 +103,39 @@ function pick<T>(list: T[]): T {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+/** A0 "Start": a translation drill over the 20 basic sentences (English prompt -> German answer). */
+function buildDrill(): SessionPlan {
+  const order = DRILL.map((_, i) => i).sort(() => Math.random() - 0.5);
+  const list = order.map((i, n) => {
+    const d = DRILL[i];
+    const alt = d.alt.length ? `  (also correct: ${d.alt.map((a) => `"${a}"`).join(", ")})` : "";
+    return `${n + 1}. "${d.en}" -> "${d.de}"${alt}`;
+  }).join("\n");
+  const systemInstruction = `Your name is Maria. You are a warm, patient German tutor inside a speaking-practice app. Today is a SENTENCE DRILL for a complete beginner (before A1). The learner is a man named Yasir. He has learned 20 basic sentences by heart and now practises saying them in German.
+
+LANGUAGES (strict)
+- Speak English for instructions and feedback. Speak German only for the German sentences. Never any other language, even if his audio sounds like another language.
+- If what you heard is unclear, very short, a cough or noise: say "Sorry?" and ask the same sentence again. Do not guess.
+
+THE DRILL
+- First turn: greet him in one short sentence and explain the game in one English sentence: "I'll say a sentence in English, and you say it in German." Then ask the first sentence.
+- Ask each sentence like this: "How do you say: My name is Yasir?" Say the English sentence clearly. Go through the sentences in this order:
+${list}
+- Judge his answer against the German sentence. Also accept the alternatives in brackets and any other fully correct German with the same meaning. Ignore his accent, small pronunciation differences and filler sounds like "äh". Word order, verb endings, articles and noun endings must be right.
+- CORRECT: say only a short praise ("Richtig!", "Sehr gut!", "Perfekt!") and immediately ask the next sentence.
+- WRONG, correction 1: start with "Not quite." Then point out EXACTLY what was wrong in one short English sentence: quote the wrong word and the right one (for example: "You said 'Ich bin heiße'. Just say 'Ich heiße'." or "With 'ich' it's 'komme', not 'kommen'." or "You left out 'bin'."). Then say the whole correct German sentence once at normal speed and ask "Again?"
+- WRONG again, correction 2: start with "Not quite." Say in a few words what is still wrong, then say the correct sentence VERY SLOWLY, at about 70% of your normal speed, word by word with a short pause between the words. Ask "Again?"
+- WRONG a third time, correction 3: start with "Not quite." Say the sentence slowly one last time, then say "We'll practise this one again later." and ask the next sentence. Never more than 3 corrections for one sentence.
+- If he asks what a word means, or asks you to repeat, help briefly in English, then continue.
+- Remember which sentences he did not get right on the first try.
+- After the last sentence: tell him how many of the 20 he got right on the first try, then practise the missed ones again in the same way. If everything is done and time is left, go through all 20 again in a different order.
+- Keep your turns short. No small talk, no role play, no other questions.
+- Do not mention that you are an AI unless he asks.`;
+  return { role: "Sentence drill · 20 basics", topic: "Basics", systemInstruction };
+}
+
 export function buildSession(level: Level, choice?: UnitChoice): SessionPlan {
+  if (level === "A0") return buildDrill();
   let role: string, topic: string, unitLabel: string | undefined, plan: string;
 
   const ask = (n: number, words: string) => `${n}. YOUR TURN TO ASK (about 2 to 3 minutes${level === "A1" ? ", like part 2 of the Goethe A1 speaking exam" : level === "A2" ? ", like the question cards in the Goethe A2 speaking exam" : ""}). Announce it in ONE short English sentence: "Now you ask me questions. I'll give you a word, and you make a question with it." Then give one word at a time in German ("Das Wort ist: Frühstück."). The learner makes a question with that word ("Was isst du zum Frühstück?"). Answer it briefly as Maria, then give the next word. Use 3 or 4 words: ${words}. If their question has a mistake, correct it first (see CORRECTIONS), then answer it. If they are stuck, help with a question word ("Mit 'was' oder 'wann'?"). If they answer with a statement instead of asking a question, remind them in one short English sentence and give an example ("Make a question with the word, for example: Hast du Kinder?"), then let them try.`;
@@ -188,7 +224,7 @@ APP NOTES
 }
 
 export const KICKOFF =
-  "[The session starts now. Greet the learner, say your name in one short sentence, and ask them to introduce themselves. Then wait.]";
+  "[The session starts now. Begin with the first step of your instructions, then wait for the learner.]";
 
 export const HELP_NUDGE =
   "[The learner has been silent for a while. Help them like a kind Goethe examiner: repeat your last question more slowly, or offer two simple choices. Keep it short.]";

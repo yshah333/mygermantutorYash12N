@@ -58,7 +58,7 @@ export default function TutorApp() {
   useEffect(() => {
     const p = store(PASS_KEY) as string, l = store(LEVEL_KEY) as string;
     if (p) { setPasscode(p); setSavedPass(true); }
-    if (l === "A1" || l === "A2" || l === "B1") setLevel(l);
+    if (l === "A0" || l === "A1" || l === "A2" || l === "B1") setLevel(l);
     try {
       const saved = JSON.parse((store(PROG_KEY) as string) || "null");
       if (saved && typeof saved.unit === "number") setProgress({ ...NEW_PROGRESS, ...saved, unit: Math.min(saved.unit, UNITS.length - 1) });
@@ -178,7 +178,7 @@ export default function TutorApp() {
         <section className="captions" aria-live="polite">
           {/* no captions while talking: listening practice. The full transcript is on the summary screen. */}
           {!connected && <p className="tutor muted">{starting ? "Allow the microphone, then Maria will greet you." : "…"}</p>}
-          {connected && !lastYou && (
+          {connected && !lastYou && level !== "A0" && (
             <div className="intro-hint">
               <span className="intro-title">Introduce yourself</span>
               <span className="chips">{INTRO_WORDS.map((w) => <span key={w} className="chip-word">{w}</span>)}</span>

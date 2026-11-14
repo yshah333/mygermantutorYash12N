@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => ({}))) as { level?: string; resume?: boolean; unit?: number; session?: number };
-  const level: Level = body.level === "A2" || body.level === "B1" ? body.level : "A1";
+  const level: Level = body.level === "A0" || body.level === "A2" || body.level === "B1" ? body.level : "A1";
   const int = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
   const choice = level === "A1" ? { unit: int(body.unit), session: int(body.session) } : undefined;
 

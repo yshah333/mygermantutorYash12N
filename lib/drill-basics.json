@@ -1,0 +1,22 @@
+[
+  { "en": "Hello, how are you?", "de": "Hallo, wie geht es dir?", "alt": ["Hallo, wie geht's?", "Hallo, wie geht es Ihnen?"] },
+  { "en": "I'm fine, thank you.", "de": "Mir geht es gut, danke.", "alt": ["Mir geht's gut, danke.", "Gut, danke."] },
+  { "en": "My name is Yasir.", "de": "Ich heiße Yasir.", "alt": ["Mein Name ist Yasir."] },
+  { "en": "I am 38 years old.", "de": "Ich bin 38 Jahre alt.", "alt": [] },
+  { "en": "I come from Pakistan.", "de": "Ich komme aus Pakistan.", "alt": [] },
+  { "en": "I live in Dubai.", "de": "Ich wohne in Dubai.", "alt": ["Ich lebe in Dubai."] },
+  { "en": "I work in marketing.", "de": "Ich arbeite im Marketing.", "alt": [] },
+  { "en": "I speak English and a little German.", "de": "Ich spreche Englisch und ein bisschen Deutsch.", "alt": ["Ich spreche Englisch und ein wenig Deutsch."] },
+  { "en": "I have a son.", "de": "Ich habe einen Sohn.", "alt": [] },
+  { "en": "I have four brothers and four sisters.", "de": "Ich habe vier Brüder und vier Schwestern.", "alt": [] },
+  { "en": "My family lives in Pakistan.", "de": "Meine Familie wohnt in Pakistan.", "alt": ["Meine Familie lebt in Pakistan."] },
+  { "en": "I like eating pizza.", "de": "Ich esse gern Pizza.", "alt": ["Ich esse gerne Pizza."] },
+  { "en": "I drink coffee with milk.", "de": "Ich trinke Kaffee mit Milch.", "alt": [] },
+  { "en": "I would like a water, please.", "de": "Ich möchte ein Wasser, bitte.", "alt": ["Ein Wasser, bitte.", "Ich hätte gern ein Wasser, bitte."] },
+  { "en": "How much does it cost?", "de": "Wie viel kostet das?", "alt": ["Was kostet das?", "Wie viel kostet es?"] },
+  { "en": "Where is the toilet?", "de": "Wo ist die Toilette?", "alt": [] },
+  { "en": "At the weekend I listen to music.", "de": "Am Wochenende höre ich Musik.", "alt": [] },
+  { "en": "Today I am learning German.", "de": "Heute lerne ich Deutsch.", "alt": [] },
+  { "en": "I don't understand.", "de": "Ich verstehe das nicht.", "alt": ["Ich verstehe nicht."] },
+  { "en": "Can you speak slowly, please?", "de": "Können Sie bitte langsam sprechen?", "alt": ["Kannst du bitte langsam sprechen?", "Können Sie bitte langsamer sprechen?"] }
+]
