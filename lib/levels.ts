@@ -14,7 +14,7 @@ export interface LevelTiming {
 export const LEVELS: Record<Level, { title: string; blurb: string; timing: LevelTiming }> = {
   A0: {
     title: "A0",
-    blurb: "Start · say 20 basic sentences in German",
+    blurb: "Start · say 30 basic sentences and questions in German",
     timing: { pauseToleranceMs: 3000, helpAfterMs: 12000, thinkingBonusMs: 10000, introPauseMs: 3000 },
   },
   A1: {
