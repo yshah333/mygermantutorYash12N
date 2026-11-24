@@ -8,11 +8,13 @@ import type { TurnState } from "@/lib/turns";
 import type { SessionPlan } from "@/lib/prompts";
 import { UNITS } from "@/lib/curriculum";
 import { NEW_PROGRESS, daysNeeded, recordSession, type Progress } from "@/lib/progress";
+import { nextReview } from "@/lib/drillTrack";
 
 type Screen = "home" | "session" | "summary";
 const PASS_KEY = "tutor-passcode";
 const LEVEL_KEY = "tutor-level";
 const PROG_KEY = "tutor-progress-a1";
+const REVIEW_KEY = "tutor-drill-review";
 const INTRO_WORDS = ["Name", "Alter", "Land", "Wohnort", "Sprachen", "Beruf", "Hobby"];
 const today = () => new Date().toLocaleDateString("en-CA");   // YYYY-MM-DD, local time
 
@@ -100,7 +102,9 @@ export default function TutorApp() {
     setOutcome(null);
     setAvgStart(null);
     const p0 = progress;
-    const choice = level === "A1" ? { unit: p0.unit, session: p0.session } : undefined;
+    let review: string[] = [];
+    try { review = JSON.parse((store(REVIEW_KEY) as string) || "[]"); } catch { /* none yet */ }
+    const choice = level === "A1" ? { unit: p0.unit, session: p0.session } : level === "A0" ? { review } : undefined;
     const s = new TutorSession(level, passcode, {
       onPlan: (p) => setPlan(p),
       onTurn: (t) => { setTurn(t); setConnected(true); },
@@ -115,6 +119,11 @@ export default function TutorApp() {
         const o = recordSession(p0, result);
         setAvgStart(o.avgStartMs);
         if (level === "A1") { saveProgress(o.progress); setOutcome(o.message); }
+        if (level === "A0" && s.drill && s.drill.asked.size) {
+          const next = nextReview(review, s.drill);
+          store(REVIEW_KEY, JSON.stringify(next));
+          setOutcome(`${s.drill.asked.size} sentences practised · ${s.drill.missed.size} were hard today. Next session starts by reviewing ${Math.min(next.length, 8)} of them.`);
+        }
         sessionRef.current = null;
         setScreen("summary");
       },

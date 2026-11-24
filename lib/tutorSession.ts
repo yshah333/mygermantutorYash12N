@@ -1,8 +1,9 @@
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+import { DrillTracker } from "./drillTrack";
 import { MicCapture, PcmPlayer, pcmToBase64 } from "./audio";
 import { TurnController, type TurnState } from "./turns";
 import { LEVELS, SESSION_MINUTES, type Level } from "./levels";
-import { HELP_NUDGE, KICKOFF, TIME_UP, type SessionPlan } from "./prompts";
+import { HELP_NUDGE, KICKOFF, TIME_UP, type SessionPlan, REVIEW_OVER } from "./prompts";
 
 /** What the avatar reads every frame. */
 export interface AvatarBus {
@@ -81,10 +82,16 @@ export class TutorSession {
   private lastResumeTry = 0;
   private tapToResume = false;
   private restartingMic = false;
+  /** A0 drill: which sentences were hard (read by the app at the end to plan the next review) */
+  drill: DrillTracker | null = null;
+  private delaysSeen = 0;
+  private reviewNoteSent = false;
   private clockMark = { wall: 0, audio: 0 };   // to spot a frozen audio clock
   private rebuilding = false;
 
-  constructor(private levelName: Level, private passcode: string, private cb: SessionCallbacks, private choice?: { unit: number; session: number }) {}
+  constructor(private levelName: Level, private passcode: string, private cb: SessionCallbacks, private choice?: Record<string, unknown>) {
+    if (levelName === "A0") this.drill = new DrillTracker();
+  }
 
   /** Call from a tap: browsers only allow audio to start after a user gesture. */
   async start() {
@@ -94,6 +101,10 @@ export class TutorSession {
     this.player = new PcmPlayer(this.ctx);
     this.turns = new TurnController(LEVELS[this.levelName].timing, {
       startActivity: (pre) => {
+        if (this.turns.startDelays.length > this.delaysSeen) {
+          this.delaysSeen = this.turns.startDelays.length;
+          this.drill?.onStart(this.turns.startDelays[this.delaysSeen - 1]);
+        }
         this.dbg(`you started speaking (mic ${this.turns.lastRms.toFixed(3)}, noise ${this.turns.floor.toFixed(3)})`);
         this.send({ activityStart: {} });
         if (pre.length) this.sendAudio(pre);
@@ -101,7 +112,7 @@ export class TutorSession {
       },
       audio: (frames) => this.sendAudio(frames),
       endActivity: () => { this.dbg("your turn ended"); this.nudgedEmpty = false; this.send({ activityEnd: {} }); },
-      askForHelp: () => { this.dbg("silence: asking Maria to help"); this.sendText(HELP_NUDGE); },
+      askForHelp: () => { this.dbg("silence: asking Maria to help"); this.drill?.onHelp(); this.sendText(HELP_NUDGE); },
       interruptPlayback: () => { this.player.stopAll(); this.botTurnOpen = false; this.turnDone = false; },
       stateChanged: (s) => { this.stateSince = performance.now(); this.waitStage = 0; this.cb.onTurn(s); },
     });
@@ -286,6 +297,10 @@ export class TutorSession {
     if (sc.turnComplete) {
       const chunks = this.turnAudio;
       this.dbg(`Maria's turn complete (${chunks} audio chunks)`);
+      if (this.drill && this.tutorLine?.text) {
+        this.drill.onMariaTurn(this.tutorLine.text);
+        if (this.drill.current !== null) this.dbg(`drill: sentence ${this.drill.current + 1}, hard so far: ${this.drill.missed.size}`);
+      }
       this.botTurnOpen = false; this.turnDone = true; this.tutorLine = null; this.turnAudio = 0;
       if (chunks === 0 && this.forcedTurnEnd) {
         // the late end of a reply we already moved on from: not an empty reply, and don't hand over twice
@@ -317,8 +332,8 @@ export class TutorSession {
   private sendAudio(frames: Int16Array[]) {
     this.send({ audio: { data: pcmToBase64(frames), mimeType: "audio/pcm;rate=16000" } });
   }
-  private sendText(text: string) {
-    try { this.session?.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete: true }); } catch { /* reconnecting */ }
+  private sendText(text: string, turnComplete = true) {
+    try { this.session?.sendClientContent({ turns: [{ role: "user", parts: [{ text }] }], turnComplete }); } catch { /* reconnecting */ }
   }
 
   // ---------- transcript ----------
@@ -476,6 +491,12 @@ export class TutorSession {
     const now = performance.now();
     const playing = this.player.playing;
     if (!this.watchdogs(now, playing)) return;
+    // A0 drill: after ~5 minutes, tell her (quietly, without making her speak) to move from review to new sentences
+    if (this.drill && !this.reviewNoteSent && this.endsAt && now >= this.endsAt - (SESSION_MINUTES - 5) * 60_000) {
+      this.reviewNoteSent = true;
+      this.sendText(REVIEW_OVER, false);
+      this.dbg("5 minutes: review time over, moving to new sentences");
+    }
 
     if (this.turnDone && !playing) {
       this.turnDone = false;

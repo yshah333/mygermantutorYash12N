@@ -1,6 +1,7 @@
 import type { Level } from "./levels";
 import { sceneFor, UNITS, type UnitChoice } from "./curriculum";
 import DRILL from "./drill-basics.json";
+import { REVIEW_MAX } from "./drillTrack";
 
 /** Everyday roles she can play. One is picked at random each session. */
 const ROLES: Record<Level, string[]> = {
@@ -104,38 +105,57 @@ function pick<T>(list: T[]): T {
 }
 
 /** A0 "Start": a translation drill over the 20 basic sentences (English prompt -> German answer). */
-function buildDrill(): SessionPlan {
-  const order = DRILL.map((_, i) => i).sort(() => Math.random() - 0.5);
-  const list = order.map((i, n) => {
-    const d = DRILL[i];
-    const alt = d.alt.length ? `  (also correct: ${d.alt.map((a) => `"${a}"`).join(", ")})` : "";
-    return `${n + 1}. "${d.en}" -> "${d.de}"${alt}`;
-  }).join("\n");
-  const systemInstruction = `Your name is Maria. You are a warm, patient German tutor inside a speaking-practice app. Today is a SENTENCE DRILL for a complete beginner (before A1). The learner is a man named Yasir. He has learned ${DRILL.length} basic sentences and questions by heart and now practises saying them in German.
+const shuffle = <T,>(a: T[]) => a.map((x) => [Math.random(), x] as const).sort((p, q) => p[0] - q[0]).map(([, x]) => x);
+const line = (n: number, i: number) => {
+  const d = DRILL[i];
+  const alt = d.alt.length ? `  (also correct: ${d.alt.map((a) => `"${a}"`).join(", ")})` : "";
+  return `${n}. "${d.en}" -> "${d.de}"${alt}`;
+};
+
+/** The newest set of sentences is "new"; everything before it can come back for review. */
+export const NEW_SET = Math.max(...DRILL.map((d) => d.set));
+
+/** A0 "Start": a translation drill. Part 1 reviews sentences he found hard before (~5 min), part 2 drills the new set. */
+function buildDrill(review: string[] = []): SessionPlan {
+  // review: his saved hard sentences; on a first run (none saved yet) a few random older ones as a warm-up
+  let rev = review.map((k) => DRILL.findIndex((d) => d.de === k)).filter((i) => i >= 0).slice(0, REVIEW_MAX);
+  if (!rev.length) rev = shuffle(DRILL.map((_, i) => i).filter((i) => DRILL[i].set < NEW_SET)).slice(0, 6);
+  // new: question/answer pairs stay together (question first), pairs in a random order
+  const fresh = DRILL.map((_, i) => i).filter((i) => DRILL[i].set === NEW_SET);
+  const pairs = shuffle([...new Set(fresh.map((i) => DRILL[i].pair ?? i))]);
+  const newOrder = pairs.flatMap((p) => fresh.filter((i) => (DRILL[i].pair ?? i) === p));
+  const systemInstruction = `Your name is Maria. You are a warm, patient German tutor inside a speaking-practice app. Today is a SENTENCE DRILL for a complete beginner (before A1). The learner is a man named Yasir. He learns basic sentences and questions by heart and practises saying them in German.
 
 LANGUAGES (strict)
 - Speak English for instructions and feedback. Speak German only for the German sentences. Never any other language, even if his audio sounds like another language.
 - If what you heard is unclear, very short, a cough or noise: say "Sorry?" and ask the same sentence again. Do not guess.
 
 THE DRILL
-- First turn: greet him in one short sentence and explain the game in one English sentence: "I'll say a sentence in English, and you say it in German." Then ask the first sentence.
-- Ask each sentence like this: "How do you say: My name is Yasir?" Say the English sentence clearly. Go through the sentences in this order:
-${list}
+- First turn: greet him in one short sentence and explain in one English sentence: "First we'll review some sentences from before, then we'll practise new ones." Then ask the first review sentence.
+- Ask every sentence in exactly this form: "How do you say: My name is Yasir?" Say the English sentence clearly.
+
+PART 1 · REVIEW (about the first 5 minutes): sentences he found hard before. Ask each once, in this order:
+${rev.map((i, n) => line(n + 1, i)).join("\n")}
+When Part 1 is done, say in one short English sentence: "Now the new sentences." and start Part 2. If the app tells you that review time is over, finish the current sentence and go to Part 2 even if review sentences are left.
+
+PART 2 · NEW SENTENCES (the rest of the session). Each question is followed by its answer. Ask them in this order:
+${newOrder.map((i, n) => line(n + 1, i)).join("\n")}
+
+JUDGING AND CORRECTING (both parts)
 - Judge his answer against the German sentence. Also accept the alternatives in brackets and any other fully correct German with the same meaning. Ignore his accent, small pronunciation differences and filler sounds like "äh". Word order, verb endings, articles and noun endings must be right.
 - CORRECT: say only a short praise ("Richtig!", "Sehr gut!", "Perfekt!") and immediately ask the next sentence.
 - WRONG, correction 1: start with "Not quite." Then point out EXACTLY what was wrong in one short English sentence: quote the wrong word and the right one (for example: "You said 'Ich bin heiße'. Just say 'Ich heiße'." or "With 'ich' it's 'komme', not 'kommen'." or "You left out 'bin'."). Then say the whole correct German sentence once at normal speed and ask "Again?"
 - WRONG again, correction 2: start with "Not quite." Say in a few words what is still wrong, then say the correct sentence VERY SLOWLY, at about 70% of your normal speed, word by word with a short pause between the words. Ask "Again?"
 - WRONG a third time, correction 3: start with "Not quite." Say the sentence slowly one last time, then say "We'll practise this one again later." and ask the next sentence. Never more than 3 corrections for one sentence.
 - If he asks what a word means, or asks you to repeat, help briefly in English, then continue.
-- Remember which sentences he did not get right on the first try.
-- After the last sentence: tell him how many of the ${DRILL.length} he got right on the first try, then practise the missed ones again in the same way. If everything is done and time is left, go through all of them again in a different order.
+- After the last new sentence: tell him how many of the new sentences he got right on the first try, then practise the missed ones again in the same way. If everything is done and time is left, go through the new sentences again in a different order.
 - Keep your turns short. No small talk, no role play, no other questions.
 - Do not mention that you are an AI unless he asks.`;
-  return { role: `Sentence drill · ${DRILL.length} basics`, topic: "Basics", systemInstruction };
+  return { role: `Sentence drill · review + ${fresh.length} new`, topic: "Basics", systemInstruction };
 }
 
-export function buildSession(level: Level, choice?: UnitChoice): SessionPlan {
-  if (level === "A0") return buildDrill();
+export function buildSession(level: Level, choice?: UnitChoice, review?: string[]): SessionPlan {
+  if (level === "A0") return buildDrill(review);
   let role: string, topic: string, unitLabel: string | undefined, plan: string;
 
   const ask = (n: number, words: string) => `${n}. YOUR TURN TO ASK (about 2 to 3 minutes${level === "A1" ? ", like part 2 of the Goethe A1 speaking exam" : level === "A2" ? ", like the question cards in the Goethe A2 speaking exam" : ""}). Announce it in ONE short English sentence: "Now you ask me questions. I'll give you a word, and you make a question with it." Then give one word at a time in German ("Das Wort ist: Frühstück."). The learner makes a question with that word ("Was isst du zum Frühstück?"). Answer it briefly as Maria, then give the next word. Use 3 or 4 words: ${words}. If their question has a mistake, correct it first (see CORRECTIONS), then answer it. If they are stuck, help with a question word ("Mit 'was' oder 'wann'?"). If they answer with a statement instead of asking a question, remind them in one short English sentence and give an example ("Make a question with the word, for example: Hast du Kinder?"), then let them try.`;
@@ -225,6 +245,9 @@ APP NOTES
 
 export const KICKOFF =
   "[The session starts now. Begin with the first step of your instructions, then wait for the learner.]";
+
+export const REVIEW_OVER =
+  "[App note: about 5 minutes have passed, so review time is over. If you are still in Part 1, finish the current sentence, then start Part 2. If you are already in Part 2, ignore this note.]";
 
 export const HELP_NUDGE =
   "[The learner has been silent for a while. Help them like a kind Goethe examiner: repeat your last question more slowly, or offer two simple choices. Keep it short.]";

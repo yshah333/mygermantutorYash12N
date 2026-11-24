@@ -5,7 +5,8 @@
     "alt": [
       "Hallo, wie geht's?",
       "Hallo, wie geht es Ihnen?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "I'm fine, thank you.",
@@ -13,72 +14,84 @@
     "alt": [
       "Mir geht's gut, danke.",
       "Gut, danke."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "My name is Yasir.",
     "de": "Ich heiße Yasir.",
     "alt": [
       "Mein Name ist Yasir."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "I am 38 years old.",
     "de": "Ich bin 38 Jahre alt.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "I come from Pakistan.",
     "de": "Ich komme aus Pakistan.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "I live in Dubai.",
     "de": "Ich wohne in Dubai.",
     "alt": [
       "Ich lebe in Dubai."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "I work in marketing.",
     "de": "Ich arbeite im Marketing.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "I speak English and a little German.",
     "de": "Ich spreche Englisch und ein bisschen Deutsch.",
     "alt": [
       "Ich spreche Englisch und ein wenig Deutsch."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "I have a son.",
     "de": "Ich habe einen Sohn.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "I have four brothers and four sisters.",
     "de": "Ich habe vier Brüder und vier Schwestern.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "My family lives in Pakistan.",
     "de": "Meine Familie wohnt in Pakistan.",
     "alt": [
       "Meine Familie lebt in Pakistan."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "I like eating pizza.",
     "de": "Ich esse gern Pizza.",
     "alt": [
       "Ich esse gerne Pizza."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "I drink coffee with milk.",
     "de": "Ich trinke Kaffee mit Milch.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "I would like a water, please.",
@@ -86,7 +99,8 @@
     "alt": [
       "Ein Wasser, bitte.",
       "Ich hätte gern ein Wasser, bitte."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "How much does it cost?",
@@ -94,29 +108,34 @@
     "alt": [
       "Was kostet das?",
       "Wie viel kostet es?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Where is the toilet?",
     "de": "Wo ist die Toilette?",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "At the weekend I listen to music.",
     "de": "Am Wochenende höre ich Musik.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "Today I am learning German.",
     "de": "Heute lerne ich Deutsch.",
-    "alt": []
+    "alt": [],
+    "set": 1
   },
   {
     "en": "I don't understand.",
     "de": "Ich verstehe das nicht.",
     "alt": [
       "Ich verstehe nicht."
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Can you speak slowly, please?",
@@ -124,7 +143,8 @@
     "alt": [
       "Kannst du bitte langsam sprechen?",
       "Können Sie bitte langsamer sprechen?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "What is your name?",
@@ -132,14 +152,16 @@
     "alt": [
       "Wie ist dein Name?",
       "Wie heißen Sie?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Where do you come from?",
     "de": "Woher kommst du?",
     "alt": [
       "Woher kommen Sie?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Where do you live?",
@@ -147,14 +169,16 @@
     "alt": [
       "Wo lebst du?",
       "Wo wohnen Sie?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "How old are you?",
     "de": "Wie alt bist du?",
     "alt": [
       "Wie alt sind Sie?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "What is your job?",
@@ -163,35 +187,40 @@
       "Was machst du beruflich?",
       "Was ist dein Beruf?",
       "Was sind Sie von Beruf?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Do you have children?",
     "de": "Hast du Kinder?",
     "alt": [
       "Haben Sie Kinder?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Do you speak English?",
     "de": "Sprichst du Englisch?",
     "alt": [
       "Sprechen Sie Englisch?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "What do you like doing?",
     "de": "Was machst du gern?",
     "alt": [
       "Was machst du gerne?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "What time is it?",
     "de": "Wie spät ist es?",
     "alt": [
       "Wie viel Uhr ist es?"
-    ]
+    ],
+    "set": 1
   },
   {
     "en": "Can you help me, please?",
@@ -199,6 +228,285 @@
     "alt": [
       "Kannst du mir bitte helfen?",
       "Können Sie mir helfen, bitte?"
-    ]
+    ],
+    "set": 1
+  },
+  {
+    "en": "Where do you work?",
+    "de": "Wo arbeitest du?",
+    "alt": [
+      "Wo arbeiten Sie?"
+    ],
+    "set": 2,
+    "pair": 1
+  },
+  {
+    "en": "I work in an office in Dubai.",
+    "de": "Ich arbeite in einem Büro in Dubai.",
+    "alt": [
+      "Ich arbeite in Dubai in einem Büro."
+    ],
+    "set": 2,
+    "pair": 1
+  },
+  {
+    "en": "When do you get up?",
+    "de": "Wann stehst du auf?",
+    "alt": [
+      "Wann stehen Sie auf?"
+    ],
+    "set": 2,
+    "pair": 2
+  },
+  {
+    "en": "I get up at seven o'clock.",
+    "de": "Ich stehe um sieben Uhr auf.",
+    "alt": [
+      "Um sieben Uhr stehe ich auf."
+    ],
+    "set": 2,
+    "pair": 2
+  },
+  {
+    "en": "What do you eat for breakfast?",
+    "de": "Was isst du zum Frühstück?",
+    "alt": [
+      "Was essen Sie zum Frühstück?"
+    ],
+    "set": 2,
+    "pair": 3
+  },
+  {
+    "en": "I eat bread and eggs.",
+    "de": "Ich esse Brot und Eier.",
+    "alt": [
+      "Zum Frühstück esse ich Brot und Eier."
+    ],
+    "set": 2,
+    "pair": 3
+  },
+  {
+    "en": "What do you drink in the morning?",
+    "de": "Was trinkst du am Morgen?",
+    "alt": [
+      "Was trinkst du morgens?",
+      "Was trinken Sie am Morgen?"
+    ],
+    "set": 2,
+    "pair": 4
+  },
+  {
+    "en": "In the morning I drink coffee.",
+    "de": "Am Morgen trinke ich Kaffee.",
+    "alt": [
+      "Morgens trinke ich Kaffee.",
+      "Ich trinke am Morgen Kaffee."
+    ],
+    "set": 2,
+    "pair": 4
+  },
+  {
+    "en": "How do you get to work?",
+    "de": "Wie fährst du zur Arbeit?",
+    "alt": [
+      "Wie kommst du zur Arbeit?",
+      "Wie fahren Sie zur Arbeit?"
+    ],
+    "set": 2,
+    "pair": 5
+  },
+  {
+    "en": "I go to work by car.",
+    "de": "Ich fahre mit dem Auto zur Arbeit.",
+    "alt": [
+      "Ich fahre mit dem Auto."
+    ],
+    "set": 2,
+    "pair": 5
+  },
+  {
+    "en": "When do you finish work?",
+    "de": "Wann hast du Feierabend?",
+    "alt": [
+      "Wann haben Sie Feierabend?"
+    ],
+    "set": 2,
+    "pair": 6
+  },
+  {
+    "en": "I finish work at six o'clock.",
+    "de": "Ich habe um sechs Uhr Feierabend.",
+    "alt": [
+      "Um sechs Uhr habe ich Feierabend.",
+      "Ich mache um sechs Uhr Feierabend."
+    ],
+    "set": 2,
+    "pair": 6
+  },
+  {
+    "en": "How long have you lived in Dubai?",
+    "de": "Wie lange wohnst du schon in Dubai?",
+    "alt": [
+      "Seit wann wohnst du in Dubai?",
+      "Wie lange wohnen Sie schon in Dubai?"
+    ],
+    "set": 2,
+    "pair": 7
+  },
+  {
+    "en": "I have lived in Dubai for eleven years.",
+    "de": "Ich wohne seit elf Jahren in Dubai.",
+    "alt": [
+      "Ich lebe seit elf Jahren in Dubai."
+    ],
+    "set": 2,
+    "pair": 7
+  },
+  {
+    "en": "Why are you learning German?",
+    "de": "Warum lernst du Deutsch?",
+    "alt": [
+      "Warum lernen Sie Deutsch?"
+    ],
+    "set": 2,
+    "pair": 8
+  },
+  {
+    "en": "I want to work in Germany.",
+    "de": "Ich möchte in Deutschland arbeiten.",
+    "alt": [
+      "Ich will in Deutschland arbeiten."
+    ],
+    "set": 2,
+    "pair": 8
+  },
+  {
+    "en": "What do you do at the weekend?",
+    "de": "Was machst du am Wochenende?",
+    "alt": [
+      "Was machen Sie am Wochenende?"
+    ],
+    "set": 2,
+    "pair": 9
+  },
+  {
+    "en": "At the weekend I go swimming.",
+    "de": "Am Wochenende gehe ich schwimmen.",
+    "alt": [
+      "Am Wochenende schwimme ich."
+    ],
+    "set": 2,
+    "pair": 9
+  },
+  {
+    "en": "What's the weather like today?",
+    "de": "Wie ist das Wetter heute?",
+    "alt": [
+      "Wie ist heute das Wetter?"
+    ],
+    "set": 2,
+    "pair": 10
+  },
+  {
+    "en": "Today it is very hot.",
+    "de": "Heute ist es sehr heiß.",
+    "alt": [
+      "Es ist heute sehr heiß."
+    ],
+    "set": 2,
+    "pair": 10
+  },
+  {
+    "en": "Do you have time tomorrow?",
+    "de": "Hast du morgen Zeit?",
+    "alt": [
+      "Haben Sie morgen Zeit?"
+    ],
+    "set": 2,
+    "pair": 11
+  },
+  {
+    "en": "Yes, tomorrow I have time.",
+    "de": "Ja, morgen habe ich Zeit.",
+    "alt": [
+      "Ja, ich habe morgen Zeit."
+    ],
+    "set": 2,
+    "pair": 11
+  },
+  {
+    "en": "What would you like to drink?",
+    "de": "Was möchtest du trinken?",
+    "alt": [
+      "Was möchten Sie trinken?"
+    ],
+    "set": 2,
+    "pair": 12
+  },
+  {
+    "en": "I would like a tea, please.",
+    "de": "Ich möchte einen Tee, bitte.",
+    "alt": [
+      "Einen Tee, bitte.",
+      "Ich hätte gern einen Tee, bitte."
+    ],
+    "set": 2,
+    "pair": 12
+  },
+  {
+    "en": "How much is the coffee?",
+    "de": "Was kostet der Kaffee?",
+    "alt": [
+      "Wie viel kostet der Kaffee?"
+    ],
+    "set": 2,
+    "pair": 13
+  },
+  {
+    "en": "The coffee costs three euros.",
+    "de": "Der Kaffee kostet drei Euro.",
+    "alt": [
+      "Er kostet drei Euro."
+    ],
+    "set": 2,
+    "pair": 13
+  },
+  {
+    "en": "How would you like to pay?",
+    "de": "Wie möchten Sie bezahlen?",
+    "alt": [
+      "Wie möchtest du bezahlen?",
+      "Wie möchten Sie zahlen?"
+    ],
+    "set": 2,
+    "pair": 14
+  },
+  {
+    "en": "I would like to pay by card.",
+    "de": "Ich möchte mit Karte bezahlen.",
+    "alt": [
+      "Mit Karte, bitte.",
+      "Ich zahle mit Karte."
+    ],
+    "set": 2,
+    "pair": 14
+  },
+  {
+    "en": "Excuse me, where is the station?",
+    "de": "Entschuldigung, wo ist der Bahnhof?",
+    "alt": [
+      "Entschuldigung, wo ist hier der Bahnhof?"
+    ],
+    "set": 2,
+    "pair": 15
+  },
+  {
+    "en": "Go straight ahead and then left.",
+    "de": "Gehen Sie geradeaus und dann links.",
+    "alt": [
+      "Geradeaus und dann links."
+    ],
+    "set": 2,
+    "pair": 15
   }
 ]
